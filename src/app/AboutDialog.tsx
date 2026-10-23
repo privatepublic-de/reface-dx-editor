@@ -42,6 +42,14 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <li><b>Init</b> starts over from the DX’s VOICE INIT sound (a sine on OP1), as one undo step.</li>
       </ul>
 
+      <h3>Store and Library</h3>
+      <ul>
+        <li><b>Store…</b> keeps the voice in one of the DX’s 32 locations. The DX stores only from its own panel, so the editor guides you: choose the location, press STORE on the DX and choose the same one, then <b>Check</b>. The editor reads the location back to make sure. A name you give on the DX’s Store Name screen comes over.</li>
+        <li><b>On the DX</b> shows the 32 locations as last read; <b>Read all 32</b> reads them all (about 7 s). Click one to select it on the DX.</li>
+        <li><b>In this browser</b> keeps voices you collect: the one you edit, the DX’s memory, .syx files you import. Click one to play it on the DX (the whole voice goes over, so sounding notes stop); it is one undo step and nothing is stored until you Store.</li>
+        <li><b>Store</b> always means the DX’s memory, <b>Export</b> always means a .syx file on your computer.</li>
+      </ul>
+
       <h3>How it was made</h3>
       <p>
         Vibe-coded with <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer">Claude</a> by Anthropic: Peter Witzel designed

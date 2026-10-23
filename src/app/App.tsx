@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { diffVoices, locationName, voiceName } from '../sysex/codec'
 import { AboutDialog } from './AboutDialog'
 import { Keyboard } from './Keyboard'
+import { LibraryPanel } from './Library'
+import { StoreButton } from './StoreButton'
 import { Panel } from './Panel'
 import { isOnline, useEditor, type Status } from './store'
 import { usePopover } from './usePopover'
@@ -26,6 +28,7 @@ export function App() {
       <main>
         <MainView />
         <Keyboard />
+        <LibraryPanel />
       </main>
     </>
   )
@@ -72,6 +75,7 @@ function ConnectionBar() {
           <div className="bar__group" role="group" aria-label="Edit">
             <ResyncButton />
             <HistoryButtons />
+            <StoreButton />
           </div>
         )}
         <div className="bar__group">

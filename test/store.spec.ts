@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEditor } from '../src/app/store'
+import { useLibrary } from '../src/app/libraryStore'
 import { DEMO_VOICES } from '../src/demo/demoVoices'
 import { voiceName } from '../src/sysex/codec'
 
@@ -61,7 +62,9 @@ describe('editor store against the demo DX', () => {
     expect(s().replaced?.common[0x0e]).toBe(33)
     s().loadVoice(s().replaced!)
     expect(s().fake!.edit.common[0x0e]).toBe(33)
-    expect(s().undoLabel).toBeNull()
+    // sent back as one undo step; the baseline stays 1-5 as stored, so it shows as Edited
+    expect(s().undoLabel).toBe('Load “Tine Piano”')
+    expect(s().baseline).toEqual(DEMO_VOICES[4])
   })
 
   it('selects a stored voice from the editor', async () => {
@@ -123,5 +126,114 @@ describe('init', () => {
     s().undo()
     await vi.advanceTimersByTimeAsync(200)
     expect(fake.edit).toEqual(DEMO_VOICES[0])
+  })
+})
+
+describe('library flows against the demo DX', () => {
+  const lib = () => useLibrary.getState()
+  beforeEach(() => useLibrary.setState({ entries: [], memory: Array(32).fill(null), job: null, notice: null }))
+
+  async function run<T>(p: Promise<T>, ms = 12000): Promise<T> {
+    await vi.advanceTimersByTimeAsync(ms)
+    return p
+  }
+
+  it('reads all 32, keeps reading true throughout, and puts the editor’s edits back', async () => {
+    await demo()
+    await run(s().selectProgram(2), 500)
+    s().setValue([0x31, 0, 0x12], 11)
+    const job = s().readAll()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(s().reading).toBe(true)
+    expect(lib().job!.done).toBeGreaterThan(0)
+    await run(job)
+    expect(lib().job).toBeNull()
+    expect(lib().memory.every((m, i) => m && voiceName(m.voice) === voiceName(DEMO_VOICES[i % DEMO_VOICES.length]))).toBe(true)
+    expect(s().program).toBe(2)
+    expect(s().voice!.ops[0][0x12]).toBe(11)
+    expect(s().fake!.edit.ops[0][0x12]).toBe(11)
+    expect(s().undoLabel).toBe('OP1 Output level')
+  })
+
+  it('stops a Read all', async () => {
+    await demo()
+    const job = s().readAll()
+    await vi.advanceTimersByTimeAsync(2100)
+    s().stopReadAll()
+    await run(job)
+    expect(lib().memory.filter(Boolean).length).toBeLessThan(32)
+    expect(lib().notice).toMatch(/^Stopped/)
+  })
+
+  it('checks a store: stored, as the DX reads back', async () => {
+    await demo()
+    s().setValue([0x31, 0, 0x12], 42)
+    s().beginStore()
+    s().fake!.storeAtPanel(5)
+    expect(await run(s().checkStore(5), 1000)).toBe('ok')
+    expect(s().program).toBe(5)
+    expect(s().baseline).toEqual(s().voice)
+    expect(lib().memory[5]!.voice.ops[0][0x12]).toBe(42)
+  })
+
+  it('takes a name given on the DX’s Store Name screen as one undo step', async () => {
+    await demo()
+    s().setValue([0x31, 0, 0x12], 42)
+    s().fake!.editAtPanel([0x30, 0, 0], 'X'.charCodeAt(0))
+    s().fake!.storeAtPanel(5)
+    expect(await run(s().checkStore(5), 1000)).toBe('ok')
+    expect(voiceName(s().voice!)).toBe('Xine Piano')
+    expect(s().undoLabel).toBe('Name given on the DX')
+  })
+
+  it('says when nothing was stored, and puts the editor’s voice back into the DX', async () => {
+    await demo()
+    s().setValue([0x31, 0, 0x12], 42)
+    expect(await run(s().checkStore(5), 1000)).toBe('differs')
+    expect(s().voice!.ops[0][0x12]).toBe(42)
+    expect(s().fake!.edit.ops[0][0x12]).toBe(42)
+    expect(s().fake!.stored[5]).toEqual(DEMO_VOICES[5])
+  })
+
+  it('loads a voice as one undo step and keeps the baseline (so it shows as Edited)', async () => {
+    await demo()
+    s().loadVoice(DEMO_VOICES[3])
+    expect(s().fake!.edit).toEqual(DEMO_VOICES[3])
+    expect(s().baseline).toEqual(DEMO_VOICES[0])
+    expect(s().undoLabel).toBe(`Load “${voiceName(DEMO_VOICES[3])}”`)
+    s().undo()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(s().fake!.edit).toEqual(DEMO_VOICES[0])
+  })
+
+  it('remembers what a location holds when the DX selects it', async () => {
+    await demo()
+    s().fake!.selectAtPanel(7)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(lib().memory[7]!.voice).toEqual(DEMO_VOICES[7])
+  })
+})
+
+describe('the demo’s own library', () => {
+  // The test environment has no localStorage; the library needs one to come back after the demo.
+  const store = new Map<string, string>()
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) })
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps what the demo does apart from the real library', async () => {
+    const lib = () => useLibrary.getState()
+    lib().useStorage('reface-dx-editor.library')
+    useLibrary.setState({ entries: [], memory: Array(32).fill(null) })
+    lib().keep(DEMO_VOICES[1], 'real')
+    await demo()
+    expect(lib().entries).toHaveLength(0)
+    s().fake!.selectAtPanel(3)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(lib().memory[3]).not.toBeNull()
+    s().disconnect()
+    expect(lib().entries.map((e) => e.source)).toEqual(['real'])
+    expect(lib().memory[3]).toBeNull()
   })
 })

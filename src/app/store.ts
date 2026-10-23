@@ -8,6 +8,7 @@ import { cloneVoice, diffVoices, locationName, setVoiceValues, voiceChanges, voi
 import type { Address } from '../sysex/messages'
 import { History } from '../sync/history'
 import { initVoice } from '../params/init'
+import { DEMO_LIBRARY_KEY, LIBRARY_KEY, useLibrary } from './libraryStore'
 import { NOT_FOUND, Session } from '../sync/session'
 
 // ---- settings (localStorage) ----
@@ -79,8 +80,15 @@ export interface EditorState {
   resync(): Promise<void>
   /** Selects stored location 0–31 on the DX and reads it. */
   selectProgram(program: number): Promise<void>
-  /** Puts a voice into the DX (all 7 blocks: cuts sounding notes) and edits it from there. */
+  /** Puts a voice into the DX (all 7 blocks: cuts sounding notes) and edits it from there, as one undo step. */
   loadVoice(voice: Voice): void
+  /** Reads all 32 locations into the library's picture of the DX's memory; the editor's voice comes back after. */
+  readAll(): Promise<void>
+  stopReadAll(): void
+  /** Before the user presses STORE on the DX: everything still waiting goes out. */
+  beginStore(): void
+  /** After STORE on the DX: reads `target` back and compares (the name may differ). */
+  checkStore(target: number): Promise<'ok' | 'differs' | 'no-reply'>
   /** An edit from the editor: goes to the DX as Parameter Changes, as one undo step called `label`. */
   setValues(changes: Change[], label: string, key?: string): void
   setValue(address: Address, value: number): void
@@ -105,6 +113,8 @@ let session: Session | null = null
 let transport: MidiTransport | null = null
 const history = new History()
 let touchTimer: ReturnType<typeof setTimeout> | null = null
+/** a Stop for Read all */
+let stopRequested = false
 /** notes the editor holds down, so none hangs */
 const held = new Set<number>()
 
@@ -114,11 +124,19 @@ export const useEditor = create<EditorState>((set, get) => {
   /** Undo/redo labels into the store. */
   const labels = () => set({ undoLabel: history.undoLabel, redoLabel: history.redoLabel })
 
-  /** A voice read from the DX (or loaded into it) becomes what is edited and the baseline; undo starts over. */
+  /** A voice read from the DX becomes what is edited and the baseline; undo starts over. Read right after selecting a
+   *  location, it is what the location holds (Q4): the library's picture of the DX's memory learns it. */
   const takeVoice = (voice: Voice, program: number | null = get().program) => {
     history.reset()
     set({ voice, baseline: cloneVoice(voice), program, reading: false })
     labels()
+    if (program !== null) useLibrary.getState().remember(program, voice)
+  }
+
+  /** Whether the editor's voice differs from what the DX had when it was read. */
+  const isEdited = () => {
+    const { voice, baseline } = get()
+    return !!voice && !!baseline && diffVoices(baseline, voice).length > 0
   }
 
   const startSession = async (t: MidiTransport, status: 'connected' | 'demo') => {
@@ -126,9 +144,9 @@ export const useEditor = create<EditorState>((set, get) => {
     transport = t
     const s = new Session(t, {
       onProgram: (program) => {
-        const { voice, baseline } = get()
         // The DX dropped the edits for the new voice; keep them so they can go back.
-        const edited = voice && baseline && diffVoices(baseline, voice).length > 0
+        const voice = get().voice
+        const edited = isEdited()
         set({ program, reading: true, replaced: edited ? voice : null, message: edited ? `The DX switched to ${locationName(program)}. Your edits to “${voiceName(voice!)}” are kept here.` : null })
       },
       onVoice: (voice) => takeVoice(voice),
@@ -155,6 +173,7 @@ export const useEditor = create<EditorState>((set, get) => {
       },
     })
     session = s
+    useLibrary.getState().useStorage(status === 'demo' ? DEMO_LIBRARY_KEY : LIBRARY_KEY)
     set({ status: 'connecting', message: null, reading: true })
     const c = await s.connect()
     if (session !== s) return
@@ -226,6 +245,7 @@ export const useEditor = create<EditorState>((set, get) => {
       session = null
       transport = null
       history.reset()
+      useLibrary.getState().useStorage(LIBRARY_KEY)
       set({ status: 'offline', voice: null, baseline: null, system: null, program: null, fake: null, message: null, replaced: null, undoLabel: null, redoLabel: null })
     },
 
@@ -255,22 +275,103 @@ export const useEditor = create<EditorState>((set, get) => {
 
     async selectProgram(program) {
       if (!session) return
-      set({ reading: true, program, replaced: null, message: null })
+      const before = get().voice
+      const edited = isEdited()
+      set({ reading: true, program, replaced: edited ? before : null, message: edited ? `Your edits to “${voiceName(before!)}” are kept here.` : null })
       const voice = await session.selectProgram(program)
       if (voice) takeVoice(voice, program)
       else set({ reading: false, message: 'The DX didn’t answer. Check the connection.' })
     },
 
     loadVoice(voice) {
-      if (!session) return
+      const now = get().voice
+      if (!session || !now) return
+      // One undo step; the baseline stays what the DX has stored, so a loaded voice shows as Edited until stored.
+      history.record(now, 'load', `Load “${voiceName(voice)}”`)
+      history.endGesture()
       session.sendVoice(voice)
-      takeVoice(cloneVoice(voice))
-      set({ replaced: null, message: null })
+      set({ voice: cloneVoice(voice), replaced: null, message: null })
+      labels()
+    },
+
+    async readAll() {
+      if (!session || useLibrary.getState().job) return
+      const lib = useLibrary.getState()
+      const s = session
+      const before = { voice: get().voice, edited: isEdited(), program: get().program }
+      stopRequested = false
+      set({ reading: true, message: null })
+      lib.setJob({ done: 0, total: 32 })
+      let last: { program: number; voice: Voice } | null = null
+      for (let p = 0; p < 32 && !stopRequested && session === s; p++) {
+        const v = await s.selectProgram(p)
+        if (v) {
+          lib.remember(p, v)
+          last = { program: p, voice: v }
+        }
+        lib.setJob({ done: p + 1, total: 32 })
+      }
+      lib.setJob(null)
+      if (session !== s) return
+      // Back where the DX was, with the editor's edits if it had any (Read all replaced the DX's edit buffer, Q8).
+      let program = last?.program ?? before.program
+      let stored = last?.voice ?? null
+      if (before.program !== null) {
+        program = before.program
+        stored = await s.selectProgram(before.program)
+      }
+      if (before.edited && before.voice) {
+        s.sendVoice(before.voice)
+        set({ voice: before.voice, baseline: stored, program, reading: false })
+      } else if (stored) takeVoice(stored, program)
+      else set({ reading: false })
+      const done = stopRequested ? 'Stopped.' : 'Read all 32.'
+      lib.setNotice(before.program === null && program !== null ? `${done} The DX is now on ${locationName(program)}.` : done)
+    },
+
+    stopReadAll() {
+      stopRequested = true
+    },
+
+    beginStore() {
+      // A trailing coalesced send 16 ms later would miss the STORE.
+      session?.sender.flush()
+    },
+
+    async checkStore(target) {
+      const voice = get().voice
+      if (!session || !voice) return 'no-reply'
+      const sent = cloneVoice(voice)
+      set({ reading: true })
+      // Q2: away and back, then read: the location as stored. (Whether a Program Change to the location the DX is
+      // already on reloads it is unknown, so never rely on that.)
+      await session.selectProgram(target === 0 ? 1 : target - 1)
+      const back = await session.selectProgram(target)
+      if (!back) {
+        set({ reading: false })
+        return 'no-reply'
+      }
+      useLibrary.getState().remember(target, back)
+      const rest = diffVoices(sent, back).filter((d) => !d.startsWith('Name:'))
+      if (rest.length) {
+        // Not stored: the DX now plays what the location holds; put the editor's voice back into it.
+        session.sendVoice(sent)
+        set({ baseline: back, program: target, reading: false })
+        return 'differs'
+      }
+      // Stored. A name changed on the DX's Store Name screen comes over as one undo step.
+      if (voiceName(back) !== voiceName(sent)) {
+        history.record(voice, 'store-name', 'Name given on the DX')
+        history.endGesture()
+        labels()
+      }
+      set({ voice: back, baseline: cloneVoice(back), program: target, reading: false, replaced: null, message: null })
+      return 'ok'
     },
 
     setValues(changes, label, key = label) {
       const voice = get().voice
-      if (!voice || !session) return
+      if (!voice || !session || useLibrary.getState().job) return
       if (changes.every(([a, d]) => d.every((b, i) => voiceValueAt(voice, [a[0], a[1], a[2] + i]) === b))) return
       history.record(voice, key, label)
       const next = cloneVoice(voice)

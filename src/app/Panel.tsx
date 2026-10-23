@@ -56,11 +56,11 @@ export function Panel() {
         <VoiceBox />
         <LfoBox />
         <PitchEgBox />
+        <EffectsBox />
       </div>
       <div className="panel__ops">
         {[0, 1, 2, 3].map((op) => <OperatorStrip key={op} op={op} />)}
       </div>
-      <EffectsBox />
     </div>
   )
 }
@@ -158,28 +158,49 @@ function PitchEgBox() {
   )
 }
 
+/** The effects as the DX routes them: the FM sound through effect 1, then effect 2, to the output. */
 function EffectsBox() {
   return (
     <section className="group-box fx-box" aria-label="Effects">
       <h2>Effects</h2>
-      <div className="fx-box__row">
-        <Effect n={1} at={0x1d} />
-        <Effect n={2} at={0x20} />
+      <div className="fx-chain">
+        <span className="fx-chain__end">FM</span>
+        <span className="fx-chain__arrow fx-chain__arrow--end" aria-hidden="true" />
+        <Pedal n={1} at={0x1d} />
+        <span className="fx-chain__arrow" aria-hidden="true" />
+        <Pedal n={2} at={0x20} />
+        <span className="fx-chain__arrow fx-chain__arrow--end" aria-hidden="true" />
+        <span className="fx-chain__end">out</span>
       </div>
     </section>
   )
 }
 
-function Effect({ n, at }: { n: 1 | 2; at: number }) {
+const EFFECT_NAMES = ['Thru', 'Distortion', 'Touch wah', 'Chorus', 'Flanger', 'Phaser', 'Delay', 'Reverb'] as const
+
+/** One effect as a pedal: its type on a small screen (‹ › step, the wheel steps, a click lists all), its two knobs. */
+function Pedal({ n, at }: { n: 1 | 2; at: number }) {
   const type = useEditor((s) => s.voice?.common[at] ?? 0)
+  const flash = useEditor((s) => s.touched.includes(addressKey(common(at))))
+  const setValue = useEditor((s) => s.setValue)
   const [l1, l2] = EFFECT_PARAM_LABELS[type]
+  const step = (d: number) => setValue(common(at), (type + d + EFFECT_TYPES.length) % EFFECT_TYPES.length)
   return (
-    <div className="group-box__sub">
-      <h3>Effect {n}</h3>
-      <S param={commonParam(`fx${n}Type`)} address={common(at)} steps={['thru', 'dist', 't.wah', 'cho', 'fla', 'pha', 'dly', 'rev']} hideLabel title={`Effect ${n} type: ${EFFECT_TYPES[type]}`} />
-      <div className="group-box__controls">
-        <P param={commonParam(`fx${n}Param1`)} address={common(at + 1)} title={l1} />
-        <P param={commonParam(`fx${n}Param2`)} address={common(at + 2)} title={l2} />
+    <div className={`pedal${type === 0 ? ' pedal--thru' : ''}`} role="group" aria-label={`Effect ${n}`}>
+      <div className={`pedal__screen${flash ? ' control--touched' : ''}`}
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) < 4) return
+          step(Math.sign(e.deltaY))
+        }}>
+        <button type="button" onClick={() => step(-1)} aria-label={`Effect ${n}: previous type`}>‹</button>
+        <select value={type} onChange={(e) => setValue(common(at), Number(e.target.value))} aria-label={`Effect ${n} type`}>
+          {EFFECT_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+        </select>
+        <button type="button" onClick={() => step(1)} aria-label={`Effect ${n}: next type`}>›</button>
+      </div>
+      <div className="pedal__knobs">
+        <P param={commonParam(`fx${n}Param1`)} address={common(at + 1)} title={l1} small />
+        <P param={commonParam(`fx${n}Param2`)} address={common(at + 2)} title={l2} small />
       </div>
     </div>
   )

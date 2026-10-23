@@ -1,5 +1,6 @@
 // The editor's state: the connection, the voice being edited (as the DX has it), and what was last read
 // from the DX (the baseline: "Edited" means the voice differs from it). After nord-lead-2-editor's store.
+import { isCarrier } from '../params/algorithms'
 import { create } from 'zustand'
 import { FakeRefaceDx } from '../demo/fakeRefaceDx'
 import { findPorts, portNames, requestWebMidi, webMidiTransport, webMidiUnavailable, type MidiTransport } from '../midi/transport'
@@ -41,6 +42,9 @@ export type Status = 'offline' | 'connecting' | 'connected' | 'demo' | 'notfound
 /** A change as the store takes it: one address, its data (one byte; ten for the name). */
 export type Change = [Address, number[]]
 
+/** What an operator is in the algorithm: heard (a carrier) or modulating another. */
+export type Role = 'carriers' | 'modulators'
+
 export interface EditorState {
   status: Status
   message: string | null
@@ -64,8 +68,8 @@ export interface EditorState {
   replaced: Voice | null
   /** the operator the panel focuses (EG graph, algorithm highlight), 0–3 */
   focusOp: number
-  /** Link: an envelope edit carries over to the other operators with the same role (PLAN §7.1) */
-  linkEgs: boolean
+  /** Link, per role: an envelope edit carries over to the other carriers, or the other modulators (PLAN §7.1) */
+  linkEgs: Record<Role, boolean>
   /** Alt/Option is held: links envelopes for this edit */
   altHeld: boolean
   /** keys held on the DX, with their velocity */
@@ -99,7 +103,7 @@ export interface EditorState {
   setValue(address: Address, value: number): void
   /** An operator envelope stage; linked (the toggle or Alt) it carries over to the same-role operators. */
   setEgValue(op: number, kind: EgKind, stage: number, value: number): void
-  setLinkEgs(on: boolean): void
+  setLinkEgs(role: Role, on: boolean): void
   setAltHeld(held: boolean): void
   /** A SYSTEM setting on the DX, live; several bytes for Master Tune and Tempo. Not part of undo. */
   setSystemValue(offset: number, value: number | number[]): void
@@ -235,7 +239,7 @@ export const useEditor = create<EditorState>((set, get) => {
     redoLabel: null,
     replaced: null,
     focusOp: 0,
-    linkEgs: false,
+    linkEgs: { carriers: false, modulators: false },
     altHeld: false,
     synthNotes: new Map(),
     lastVelocity: null,
@@ -448,7 +452,8 @@ export const useEditor = create<EditorState>((set, get) => {
       const at = egOffset(kind, stage)
       const own: Change = [[0x31, op, at], [value]]
       const name = `OP${op + 1} EG ${kind} ${stage + 1}`
-      if (!(get().linkEgs || get().altHeld)) return get().setValues([own], name, addressKey(own[0]))
+      const role: Role = isCarrier(voice.common[0x10], op) ? 'carriers' : 'modulators'
+      if (!(get().linkEgs[role] || get().altHeld)) return get().setValues([own], name, addressKey(own[0]))
       // Linked: everything from the voice as the drag began (or as it is, for a wheel or key step).
       const linked = linkedEgChanges(gestureStart ?? voice, op, kind, stage, value)
       get().setValues([own, ...linked], `${name}, linked`, `linked:${addressKey(own[0])}`)
@@ -457,7 +462,7 @@ export const useEditor = create<EditorState>((set, get) => {
       touchTimer = setTimeout(() => set({ touched: [] }), 400)
     },
 
-    setLinkEgs: (on) => set({ linkEgs: on }),
+    setLinkEgs: (role, on) => set({ linkEgs: { ...get().linkEgs, [role]: on } }),
     setAltHeld: (held) => get().altHeld !== held && set({ altHeld: held }),
 
     undo() {

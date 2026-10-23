@@ -265,12 +265,12 @@ describe('linked envelopes', () => {
   const l2 = (op: number) => s().voice!.ops[op][0x06]
   const dxL2 = (op: number) => s().fake!.edit.ops[op][0x06]
 
-  afterEach(() => useEditor.setState({ linkEgs: false, altHeld: false }))
+  afterEach(() => useEditor.setState({ linkEgs: { carriers: false, modulators: false }, altHeld: false }))
 
   it('carries a drag over to the same-role operators, from the start of the drag, as one undo step', async () => {
     await demo()
     const start = [0, 1, 2, 3].map(l2) // 90, 55, 80, 0
-    s().setLinkEgs(true)
+    s().setLinkEgs('carriers', true)
     s().beginGesture()
     s().setEgValue(0, 'level', 1, 45) // OP1 L2 halved
     s().setEgValue(0, 'level', 1, 127) // OP3 clamps at 127
@@ -285,6 +285,22 @@ describe('linked envelopes', () => {
     expect(s().undoLabel).toBe('OP1 EG level 2, linked')
     s().undo()
     expect([0, 1, 2, 3].map(l2)).toEqual(start)
+  })
+
+  it('links carriers and modulators separately', async () => {
+    await demo()
+    const start = [0, 1, 2, 3].map(l2)
+    s().setLinkEgs('carriers', true)
+    s().setEgValue(1, 'level', 1, 20) // OP2, a modulator: on its own
+    expect([l2(1), l2(3)]).toEqual([20, start[3]])
+    s().setEgValue(0, 'level', 1, 45) // OP1, a carrier: OP3 follows
+    expect(l2(2)).not.toBe(start[2])
+    s().setLinkEgs('carriers', false)
+    s().setLinkEgs('modulators', true)
+    const op3 = l2(2)
+    s().setEgValue(0, 'rate', 1, 10) // a carrier, now on its own
+    expect(l2(2)).toBe(op3)
+    expect(s().voice!.ops[2][0x02]).toBe(DEMO_VOICES[0].ops[2][0x02])
   })
 
   it('links one edit with Alt held, and nothing without', async () => {

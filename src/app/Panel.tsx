@@ -311,14 +311,16 @@ function OperatorStrip({ op }: { op: number }) {
   )
 }
 
-/** Link (PLAN §7.1): an envelope edit carries over to the other operators with the same role. Alt/Option links one edit. */
+/** Link (PLAN §7.1), one switch per role: an envelope edit carries over to the other carriers, or to the other
+ *  modulators. Alt/Option links one edit. */
 function LinkToggle({ carrier }: { carrier: boolean }) {
-  const linkEgs = useEditor((s) => s.linkEgs)
+  const role = carrier ? 'carriers' : 'modulators'
+  const linked = useEditor((s) => s.linkEgs[role])
   const alt = useEditor((s) => s.altHeld)
   const setLinkEgs = useEditor((s) => s.setLinkEgs)
-  const on = linkEgs || alt
+  const on = linked || alt
   return (
-    <button type="button" className={`link-toggle${on ? ' on' : ''}`} aria-pressed={linkEgs} onClick={() => setLinkEgs(!linkEgs)}
+    <button type="button" className={`link-toggle${on ? ' on' : ''}`} aria-pressed={linked} onClick={() => setLinkEgs(role, !linked)}
       title={`Link envelopes: a change here carries over to the other ${carrier ? 'carriers' : 'modulators'} (rates by the same amount, levels by the same ratio). Hold Alt/Option to link one edit.`}>
       <span className="led" aria-hidden />
       Link {carrier ? 'carriers' : 'modulators'}

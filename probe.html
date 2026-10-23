@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>reface DX Probe</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #141a1c;
+        --panel: #1c2427;
+        --line: #2f3c40;
+        --text: #dce6e8;
+        --muted: #7f9195;
+        --accent: #3fb8c8;
+        --ok: #5cc98a;
+        --bad: #ff7a6e;
+        --warn: #e6b450;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.4 system-ui, sans-serif;
+      }
+      h1 { font-size: 18px; margin: 0 0 12px; }
+      h1 span { color: var(--accent); }
+      .layout { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 16px; }
+      @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+      section h2 { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+      section h2 b { color: var(--accent); font-weight: 600; }
+      section.danger { border-color: #6b2b26; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+      .hint { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
+      button, select, input {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 4px 9px;
+        font: inherit;
+      }
+      input[type='number'] { width: 4.5em; }
+      input.hex { width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, monospace; }
+      button:hover:not(:disabled) { border-color: var(--accent); }
+      button:disabled { opacity: 0.4; }
+      #status { color: var(--muted); }
+      #log {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px;
+        height: calc(100vh - 110px);
+        overflow: auto;
+        font: 12px/1.45 ui-monospace, Menlo, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        position: sticky;
+        top: 16px;
+      }
+      .ok { color: var(--ok); }
+      .bad { color: var(--bad); }
+      .warn { color: var(--warn); }
+      .dim { color: var(--muted); }
+      .head { color: var(--accent); margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1><span>reface DX</span> Web MIDI probe · Phase 0</h1>
+    <div class="layout">
+      <div>
+        <section>
+          <h2>Connection</h2>
+          <div class="row">
+            <button id="connect">Connect</button>
+            <span id="status">not connected</span>
+          </div>
+          <div class="row">
+            <label>In <select id="input"></select></label>
+            <label>Out <select id="output"></select></label>
+          </div>
+          <div class="row">
+            <label>Device no. <input id="device" type="number" min="0" max="15" value="0" /></label>
+            <label>MIDI ch <input id="channel" type="number" min="1" max="16" value="1" /></label>
+            <label>Voice on the DX <select id="program"></select></label>
+          </div>
+          <div class="row">
+            <button data-op="note" disabled>Link test: play a note</button>
+            <span class="hint">you should hear it (computer → DX)</span>
+          </div>
+          <p class="hint">MIDI ch = the DX's RV CH (FUNCTION, MIDI page). Notes and Program Changes go there. "Voice on the DX" follows the Program Changes the DX sends (TR CH), or set it by hand: the tests that switch Voices come back to it.</p>
+        </section>
+
+        <section>
+          <h2>Reads <b>Q1 Q4 Q11</b></h2>
+          <div class="row">
+            <button data-op="identity" disabled>Identity request</button>
+            <button data-op="readSystem" disabled>Read SYSTEM</button>
+            <button data-op="readVoice" disabled>Read voice</button>
+          </div>
+          <div class="row">
+            <button data-op="sweepDevice" disabled>Device no. sweep 0–15 (Q1)</button>
+            <span class="hint">a voice dump request with each number; which answer, and with which number?</span>
+          </div>
+          <div class="row">
+            <label>Parameter request at <input id="paddr" style="width: 7em" value="30 00 10" /></label>
+            <button data-op="paramRequest" disabled>Send</button>
+            <span class="hint">e.g. 30 00 10 algorithm, 31 00 12 OP1 level, 00 00 0e MIDI control</span>
+          </div>
+          <p class="hint">Q4: change something on the DX's panel (an EG rate in Edit mode), then Read voice: does the dump list the change (edited voice) or not (stored voice)? Every read lists what changed since the last one.</p>
+        </section>
+
+        <section>
+          <h2>Listen <b>Q3 Q5 Q9</b></h2>
+          <p class="hint">Click, then do one thing on the DX within the time: Q5 an FM-section knob (FREQ/LEVEL/ALGO/FB), then a parameter in Edit mode (EG, LFO, Pitch EG) or an effect; Q9 select another Voice; Q3 STORE a Voice to its own location (no change). Run Q5 once with MIDI Control on and once off. The summary lists what arrived.</p>
+          <div class="row">
+            <label>for <input id="listen" type="number" min="3" max="120" value="15" /> s</label>
+            <button data-op="listen" disabled>Listen</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>DX settings <b>Q11</b> · changes the DX's own settings</h2>
+          <p class="hint">Parameter Changes to SYSTEM. Does each take effect at once (watch the DX's screen or FUNCTION page)? Read SYSTEM confirms.</p>
+          <div class="row">
+            <button data-op="midiControlOn" disabled>MIDI Control on</button>
+            <button data-op="midiControlOff" disabled>MIDI Control off</button>
+            <button data-op="localOn" disabled>Local on</button>
+            <button data-op="localOff" disabled>Local off</button>
+          </div>
+        </section>
+
+        <section class="danger">
+          <h2>Voice send <b>Q2 Q4 Q6</b> · might write memory</h2>
+          <p class="hint">Set "Voice on the DX" to a Voice you could lose. Send marked voice: selects that Voice (unstored edits on the DX are lost), reads it (kept as the original), changes its name to PROBE, Transpose +1 and OP1 Detune, sends all 7 blocks, logs what comes back within a second (echo) and reads it again (did it land?). PC away and back: does the mark survive a Program Change? If yes, the bulk was stored: then send the original back and PC away and back again.</p>
+          <div class="row">
+            <button data-op="sendMarked" disabled>Send marked voice</button>
+            <button data-op="pcAwayBack" disabled>PC away and back, read</button>
+            <button data-op="sendOriginal" disabled>Send the original back</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Partial sends and rate <b>Q7</b></h2>
+          <p class="hint">Each test marks one value, sends only part of a voice, reads back whether it landed, then sends the whole original voice back. Read voice first.</p>
+          <div class="row">
+            <button data-op="partialCommon" disabled>Common block alone</button>
+            <button data-op="partialCommonFramed" disabled>Header + Common + footer</button>
+            <button data-op="partialOp" disabled>OP3 block alone</button>
+          </div>
+          <div class="row">
+            <label>every <input id="rate" type="number" min="0" max="200" value="5" /> ms</label>
+            <button data-op="rateTest" disabled>32 Parameter Changes, how many land?</button>
+          </div>
+          <p class="hint">Hold-note tests (listen: clicks, cut notes, retriggers). The voice is sent back afterwards.</p>
+          <div class="row">
+            <button data-op="heldAlgorithm" disabled>Step algorithms 1–12</button>
+            <button data-op="heldOpOnOff" disabled>Toggle OP2 on/off</button>
+            <button data-op="heldEffect" disabled>Step Effect 1 types</button>
+            <button data-op="heldVoice" disabled>Resend the voice 3×</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Read all 32 <b>Q8</b></h2>
+          <p class="hint">Program Change, wait, dump request for each of 1-1 … 4-8, then selects "Voice on the DX" again. This replaces the voice being edited on the DX: afterwards, does FUNCTION → Job → EDIT RECALL bring an edit back? The voices go into the received SysEx (Download).</p>
+          <div class="row">
+            <label>wait <input id="pcwait" type="number" min="0" max="1000" value="100" /> ms after each PC</label>
+            <button data-op="readAll" disabled>Read all 32</button>
+            <button id="stop">Stop</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Frequency display <b>Q10</b></h2>
+          <p class="hint">Sets OP1 to the next coarse/fine/mode (or detune) by Parameter Change. Open OP1 in Edit mode on the DX, type what its screen shows, then Log. The log line carries what the editor would show, to compare. Send the original back afterwards.</p>
+          <div class="row">
+            <button data-op="freqPrev" disabled>◀</button>
+            <button data-op="freqNext" disabled>Set next ▶</button>
+            <span id="freqstep" class="hint">step –</span>
+          </div>
+          <div class="row">
+            <label>DX shows <input id="freqshown" style="width: 8em" /></label>
+            <button data-op="freqLog" disabled>Log</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Files <b>Q12</b></h2>
+          <div class="row">
+            <input id="file" type="file" accept=".syx,application/octet-stream" />
+          </div>
+          <div class="row">
+            <select id="filevoices" style="min-width: 14em"></select>
+            <button data-op="sendFileVoice" disabled>Send to the DX (edit buffer)</button>
+          </div>
+          <p class="hint">A Soundmondo download, a bank file or one of the probe's own downloads. The log lists the voices and anything the parser dropped.</p>
+        </section>
+
+        <section>
+          <h2>Raw and capture</h2>
+          <div class="row"><input id="raw" class="hex" placeholder="hex bytes, e.g. f0 43 20 7f 1c 05 0e 0f 00 f7" /></div>
+          <div class="row">
+            <button data-op="sendRaw" disabled>Send</button>
+            <button id="saveSyx">Download received SysEx (.syx)</button>
+            <button id="saveLog">Download log</button>
+            <button id="clear">Clear log</button>
+          </div>
+          <div class="row">
+            <label><input id="showRaw" type="checkbox" /> show raw bytes</label>
+            <label><input id="showVoice" type="checkbox" /> list all values of received voices</label>
+          </div>
+        </section>
+      </div>
+      <div id="log"></div>
+    </div>
+    <script type="module" src="/src/probe.ts"></script>
+  </body>
+</html>

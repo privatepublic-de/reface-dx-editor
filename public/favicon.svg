@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Shared synth-editor tile: a dark scope screen with one waveform in the instrument's colour. -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#15181b" stroke="#3fb8c8" stroke-opacity=".45" stroke-width="3"/>
+  <g fill="none" stroke="#3fb8c8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 43h7V21h11v22h9V21h11v22h6"/>
+  </g>
+</svg>

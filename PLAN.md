@@ -1,0 +1,190 @@
+# reface DX Web Editor: Plan
+
+A browser-based WebMIDI editor for the Yamaha reface DX. The first version edits **the current Voice** (all 38 common and 4 × 28 operator parameters, including everything that sits behind Edit mode's small touch screen) and keeps a **library of Voices** in the browser and as `.syx` files.
+
+Sources: *reface Data List* (MIDI data format and tables for the DX, pp. 6–10), *reface Owner's Manual* (DX panel, Function pages, Store, pp. 19–23, 40–43), *reface DX Reference Manual* (Edit mode pages, frequency ranges, KSC, EG, LFO, Pitch EG), *v1.30 Supplementary Manual* (Master Tune / Master Transpose pages, Quantize; nothing voice-related). Page numbers are the printed ones.
+
+---
+
+## 0. Prior art (read 2026-10-23)
+
+Facts below are taken from these projects; **no code is copied** (most are GPL/AGPL, one has no license). They confirm the Data List in practice and answer part of §3.
+
+| Project | What it is | What we learn |
+|---|---|---|
+| [mikatahara/RefaceDX](https://github.com/mikatahara/RefaceDX) (MIT, 2018–2024, code on `gh-pages`) | Plain JS + jQuery Web MIDI editor: one form per operator, a "sync" button, text-file save. No CC follow, no Save, no algorithm drawing. | Device number **0** works for Dump Request (`43 20 …`) and Parameter Change (`43 10 …`). Replies come back as **one Web MIDI message per block** with device byte `00`. Editing = one Parameter Change per control, unthrottled. |
+| [christofmuc/MidiKraft-yamaha-refacedx](https://github.com/christofmuc/MidiKraft-yamaha-refacedx) (AGPL, KnobKraft Orm adapter) | Librarian | **Detects the synth with a SYSTEM Dump Request** (`00 00 00`), which gives TR/RV channel, Local and MIDI Control in one reply (warns when RV CH is omni). Bank read = **PC n + header Dump Request**, 32 times; a voice is sent as 7 blocks to the edit buffer. **No remote store**: it can send a voice, not write a location. Checksum includes the Model ID, as the Data List says. |
+| [SpotlightKid/reface-dx-lib](https://github.com/SpotlightKid/reface-dx-lib) (GPL-3, Python/Qt) | Librarian with tags, Soundmondo download tool | Waits **100 ms between PC and Dump Request**. Also only sends voices to the edit buffer. |
+| [copych/RDX-Reface-DX-emu](https://github.com/copych/RDX-Reface-DX-emu) (no license, ESP32 emulator; author never had a real DX) | Emulator that Soundmondo accepts | Ships a 32-voice factory dump: **32 × 241 = 7712 bytes, voices simply concatenated**. Candidate formulas for Q10: ratio = coarse 0 → 0.5 + fine × 0.005, else coarse + fine × 0.01; fixed = 10^(coarse >> 3) × 9.772^(fine/99) (both confirmed on the DX, FINDINGS Q10); detune ≈ 1.00034^(dt−64) (not visible on the DX). Its carrier table for the 12 algorithms is a cross-check only; the manual's chart is the source. |
+| [Yamaha Synth Forum thread](https://yamahasynth.com/community/reface-1/system-exclusives-to-send-a-voice-to-the-dx-reface/) | Users sending voices by hand | 241 bytes per voice; a real header block is `F0 43 00 7F 1C 00 04 05 0E 0F 00 5E F7`. Yamaha's own answer: locations are only overwritten with **[STORE] on the panel**; VOICE RECALL restores a factory voice. |
+| Patch Base (Coffeeshopped, commercial, macOS/iPad) | The only full editor/librarian | Has an "FM visualizer", copy/paste of envelopes and operators, a 32-voice bank editor and a randomizer. How it writes a bank isn't documented. Its synth-data repo has no reface entry. |
+
+Consequences, used below: device number 0 is the default (any works, FINDINGS Q1); connect = SYSTEM request (FINDINGS Q11: it also gives the channels; Identity answers only with device byte `0n`); Read all = PC + request (reface-dx-lib waits 100 ms; FINDINGS Q8 shows no wait is needed); Save is the guided [STORE] flow unless Q3 finds something nobody else has; `.syx` = any number of 241-byte voices back to back.
+
+---
+
+## 1. Setup facts that shape the design
+
+| Fact | Consequence |
+|---|---|
+| **Every voice and system parameter has a SysEx address** (Parameter Change, `F0 43 1n 7F 1C 05 aH aM aL dd F7`, 11 bytes). Control Changes exist only for the FM section's panel controls (Algorithm and per-operator Level, Feedback level/type, Freq mode, Coarse, Fine: 25 CCs) and only when **MIDI Control is on** (factory default: off). EGs, LFO, Pitch EG, KSC, velocity, AMD/PMD switches, effects, name, transpose, part mode, portamento and PB range are **SysEx only**. | Unlike the Nord Lead editor, the one write path for live editing is **Parameter Change SysEx**, coalesced per address (latest value wins), as `nrpnQueue` does in hydrasynth-editor. CCs are only *listened to* (panel moves in the FM section). |
+| A Voice is **7 bulk blocks**: Bulk Header (`0E 0F 00`), Common (`30 00 00`, 38 bytes), Operator 1–4 (`31 0p 00`, 28 bytes each), Bulk Footer (`0F 0F 00`). A Dump Request to the Bulk Header address returns all of them. | Whole-voice send/receive = 7 messages, 241 bytes, ~77 ms over 5-pin DIN, ~18 ms over USB. Only for loading a Voice: a bulk **cuts sounding notes**, and a voice with missing blocks gets them reset to init values (FINDINGS Q7). |
+| The voice map has **no location address** and the Data List documents **no store message**. A received voice bulk most likely lands in the **edit buffer** of the selected Voice. Saving into 1-1 … 4-8 is the panel's **[STORE]** (with name). | **Save can't be done by the editor alone** (confirmed 2026-10-23, FINDINGS Q2/Q3). Design: send the voice to the edit buffer, then a guided dialog "press STORE on the DX, choose 2-5, YES", then verify by Program Change away and back + dump request. |
+| **Program Change 0–31** = Bank 1-1 … 4-8, no Bank Select. | Selecting a stored Voice is one message. Reading the 32 Voices = 32 × (PC + dump request); this **replaces the edit buffer**, so the reader warns when the DX has unstored edits; EDIT RECALL on the DX brings the last edit back afterwards (FINDINGS Q8). |
+| Values are **plain 7-bit**, no nybblization in the voice data. Offsets: Transpose and PB range `28–58` (−24…+24, centre `40`), Pitch EG levels `10–70` (−48…+48), Detune `00–7F` (−64…+63). The 10-char ASCII name is `20–7E`. | A simple table-driven codec. Master Tune (SYSTEM) is the only 4-nybble value (−102.4…+102.3 cents in 0.1-cent steps); Tempo is 2 × 7 bits. |
+| Bulk byte count = data size + 4 (Model ID + 3 address bytes). Checksum makes (Model ID + address + data + checksum) ≡ 0 mod 128. | Unit-tested from day one; fixtures from the real synth confirm it. |
+| **The DX takes SysEx with any device number** and answers with `00` (FINDINGS Q1). The SYSTEM Dump Request answers in 3 ms. The Identity Request answers only as `F0 7E 0n 06 01 F7` (not the all-call `7F`), with byte 10 = `03`, probably firmware 1.30 (Q11). | Connect check = SYSTEM Dump Request, which also gives the channels, MIDI Control and Local; Identity (`0n`) adds the firmware version for the About dialog. No device-ID setting in the editor. |
+| The DX sends **Active Sensing** every 200 ms and has a built-in **USB-MIDI** port plus 5-pin MIDI via the breakout cable. | Filter `FE` (and clock `F8`) at the transport, as in the siblings. Prefer USB; DIN works the same. |
+| WebMIDI SysEx needs a secure context and a permission prompt. | Same as the siblings: `localhost` dev server and `start/` launchers, or GitHub Pages over https. Chrome or Edge. Fixed port **5185** (5179–5184 are taken by the siblings and their alternate configs). |
+
+---
+
+## 2. Protocol reference (what we'll implement)
+
+Header bytes: `43` Yamaha, `7F 1C` group, `05` reface DX. The high nibble of the third byte says the message kind; the low nibble `n` is the device number (Q1).
+
+| Message | Bytes |
+|---|---|
+| Parameter Change | `F0 43 1n 7F 1C 05 aH aM aL dd… F7` |
+| Bulk Dump | `F0 43 0n 7F 1C bH bL 05 aH aM aL dd… ck F7` |
+| Dump Request | `F0 43 2n 7F 1C 05 aH aM aL F7` |
+| Parameter Request | `F0 43 3n 7F 1C 05 aH aM aL F7` |
+| Identity Request / Reply | `F0 7E 0n 06 01 F7` (not `7F`) → `F0 7E 7F 06 02 43 00 41 53 06 vv 00 00 7F F7`, vv = `03` on this DX (version?) |
+
+### 2.1 Address map
+
+| Block | Address | Size | Bulk byte count |
+|---|---|---|---|
+| SYSTEM | `00 00 00` | 32 (15 used) | 36 (`00 24`) |
+| Bulk Header | `0E 0F 00` | 0 | 4 |
+| VOICE Common | `30 00 00` | 38 | 42 (`00 2A`) |
+| VOICE Operator 1–4 | `31 0p 00`, p = 0–3 | 28 | 32 (`00 20`) |
+| Bulk Footer | `0F 0F 00` | 0 | 4 |
+
+**SYSTEM** (`00 00 xx`): 00 TR CH (0–15, `7F` off) · 01 RV CH (0–15, `10` all) · 02–05 Master Tune (4 nybbles) · 06 Local · 07 Master Transpose (`34–4C`) · 08–09 Tempo 30–300 · 0A Contrast · 0B Sustain pedal (FC3, FC4/5) · 0C Auto Power-Off · 0D Speaker · 0E MIDI Control · 0F–1F reserved.
+
+**Common** (`30 00 xx`): 00–09 Name · 0A–0B reserved · 0C Transpose · 0D Part Mode (poly, mono-full, mono-legato) · 0E Portamento · 0F PB Range · 10 Algorithm (0–11) · 11 LFO Wave (sin, tri, saw up, saw down, square, S&H8, S&H) · 12 LFO Speed · 13 LFO Delay · 14 LFO PMD · 15–18 Pitch EG Rates 1–4 · 19–1C Pitch EG Levels 1–4 · 1D Effect 1 Type (thru, dist, t.wah, cho, fla, pha, dly, rev) · 1E–1F Effect 1 Param 1/2 · 20–22 Effect 2 Type/Param 1/2 · 23–25 reserved.
+
+**Operator** (`31 op xx`): 00 On · 01–04 EG Rates · 05–08 EG Levels · 09 Rate Scaling · 0A/0B KSC L/R Depth · 0C/0D KSC L/R Curve (−lin, −exp, +exp, +lin) · 0E LFO AMD · 0F LFO PMD on · 10 Pitch EG on · 11 Velocity Sens · 12 Output Level · 13 Feedback Level · 14 Feedback Type (saw, square) · 15 Freq Mode (ratio, fixed) · 16 Coarse 0–31 · 17 Fine 0–99 · 18 Detune · 19–1B reserved.
+
+Effect parameter labels depend on the type: Drive/Tone (dist), Sens/Rez (t.wah), Depth/Rate (cho, fla, pha), Depth/Time (dly, rev).
+
+### 2.2 Control Change (receive channel; only with MIDI Control on)
+
+| Parameter | OP1 | OP2 | OP3 | OP4 |
+|---|---|---|---|---|
+| Level | 85 | 102 | 108 | 114 |
+| Feedback level | 86 | 103 | 109 | 115 |
+| Feedback type (0–63 saw, 64–127 square; sends 0/127) | 87 | 104 | 110 | 116 |
+| Freq mode (0–63 ratio, 64–127 fixed; sends 0/127) | 88 | 105 | 111 | 117 |
+| Coarse 0–31 | 89 | 106 | 112 | 118 |
+| Fine 0–99 | 90 | 107 | 113 | 119 |
+
+Algorithm = CC 80; sent as 0, 12, 23, 35, 46, 58, 69, 81, 92, 104, 115, 127 and recognized in ranges (0–11 → 1, 12–21 → 2, …, 117–127 → 12). Also received: 1 mod wheel, 7 volume, 11 expression, 64 sustain; sent: 64 only.
+
+---
+
+## 3. Open questions (Phase 0, needs the synth)
+
+| # | Question | Why it matters |
+|---|---|---|
+| Q1 | ~~Do other `n` work too?~~ **Answered 2026-10-23: all 16 work, replies carry `00`.** | Message builder. |
+| Q2 | ~~Where does a voice bulk go?~~ **Answered 2026-10-23: into the voice being edited; a Program Change brings the stored voice back unchanged.** | **Save design:** guided STORE. |
+| Q3 | Is there any way to store remotely? **STORE on the panel sends nothing (2026-10-23)**, so Save confirms by reading the location back. Remote store: none (Q2). | Whether Save can be one click or must be the guided panel flow. |
+| Q4 | ~~Edited or stored voice?~~ **Answered 2026-10-23: the edited voice.** An Edit-mode change on the panel sends nothing (Q5, partly), so Resync = one dump request. | Resync after panel edits, and the library read. |
+| Q5 | ~~Panel edits sent?~~ **Answered 2026-10-23: only FM-section moves, as CCs (FREQ sends mode + coarse + fine together), only with MIDI Control on; never SysEx.** | Live follow for the FM section, Resync for the rest. |
+| Q6 | ~~Echo?~~ **Answered 2026-10-23: none.** | No echo suppression needed for our own sends. |
+| Q7 | **Mostly answered 2026-10-23:** a lone block is ignored; a framed voice with missing blocks gets them **reset to init values**; 32 Parameter Changes back to back (2 ms) all land; Parameter Changes under held notes are clean, but a **whole-voice bulk cuts sounding notes**. | Coalescing unit and send rate; whether edits are fully live. |
+| Q8 | ~~Read all?~~ **Answered 2026-10-23: ~7.3 s for 32; a dump request right after a PC is held until the Voice is loaded (~210 ms), so no wait is needed; the current edit is lost, EDIT RECALL brings it back.** | Library read UX and its warning. |
+| Q9 | ~~Voice select?~~ **Answered 2026-10-23: one Program Change on TR CH, with MIDI Control on or off.** | Following panel Voice changes. |
+| Q10 | ~~Frequency display?~~ **Answered 2026-10-23: ratio = coarse + fine/100 (coarse 0 = 0.5 + fine × 0.005); fixed = 10^(coarse ÷ 8) × 10^(fine/100); detune shown as raw − 64.** | Showing the same numbers as the DX's screen (`params/display.ts`, tested). |
+| Q11 | **Answered 2026-10-23:** SYSTEM Dump Request and Identity (`0n` only) work; SYSTEM Parameter Changes (MIDI Control, Local) take effect at once. Byte 10 of the Identity Reply = `03`, probably firmware 1.30. | Settings tab and the "turn on MIDI Control" helper. |
+| Q12 | **Partly 2026-10-23:** single 241-byte voice files and 32-voice banks parse. Soundmondo's old API is gone and a download from its UI wasn't found, so its files stay unverified; import accepts any number of 7-block voices. | Library import compatibility. |
+
+Probe results go to `docs/FINDINGS.md` (date + firmware on each answer); raw `.syx` and logs go to `test/fixtures/`. They feed the codec tests and `?demo` mode.
+
+---
+
+## 4. Architecture
+
+**Stack: the same as the siblings.** Vite 6, TypeScript, React 18, zustand, vitest, `@fontsource/barlow`, no backend. Code is **copied and adapted**, not shared as a package.
+
+| Taken from | Used here for |
+|---|---|
+| `hydrasynth-editor/src/midi/` (transport, incoming, channel) | Port pick and persist, hot-plug, SysEx and CC in/out, Active Sensing filter |
+| `hydrasynth-editor/src/sync/nrpnQueue.ts` | Coalesced Parameter Change sends (per address, latest wins, trailing send) |
+| `hydrasynth-editor/src/app/controls/`, `Pads.tsx`, `ErrorBoundary`, dialogs, `probe.html` + `src/probe.ts` | Knobs, steppers, keyboard, probe page |
+| `nord-lead-2-editor/src/sync/` (session, history), `src/library/`, `src/demo/` | Request-in-flight handling (one at a time, drop late replies), undo/redo, localStorage library, fake synth for `?demo` and tests |
+| `start/` launchers, GitHub Pages workflow, `public/privacy.html` + its test | Running it offline and hosting it |
+
+```
+src/
+  midi/        transport.ts, incoming.ts
+  sysex/
+    messages.ts   header bytes, kinds, device number, block framing, byte count, checksum, parser
+    codec.ts      7-block Voice assembly/parsing, Voice <-> bytes, .syx files, voice diff/format
+  params/
+    common.ts     38 common params: offset, name, range, encoding (offset-64 etc.), labels
+    operator.ts   28 operator params
+    system.ts     SYSTEM params
+    cc.ts         CC <-> param mapping, ALGO value ranges
+    display.ts    ratio/fixed Hz, detune, signed values as the DX shows them (Q10)
+    algorithms.ts the 12 topologies: carriers, modulators, connections, feedback
+  sync/
+    paramSender.ts  coalesced Parameter Changes
+    session.ts      connect (identity), resync (dump request), echo suppression, CC follow
+    history.ts      undo/redo
+  library/      voiceStore.ts (browser), syxFile.ts, readAll.ts (32 × PC + request, with Stop)
+  demo/         fakeRefaceDx.ts, factory voices from fixtures
+  app/          App, store, ConnectionBar, VoicePanel, OperatorStrip, AlgorithmView, EgView, Library, Keyboard, controls/
+test/           bulk/checksum, codec round trip, param tables, cc mapping, sender pacing, fixtures
+```
+
+### Connect
+1. Open the port and send a SYSTEM Dump Request (as KnobKraft does): its reply is the presence check and gives TR/RV channel, MIDI Control and Local. Notes and Program Changes go to the RV channel; warn when RV CH is "All".
+2. Send a Dump Request for the Bulk Header; decode the 7 blocks (one Web MIDI message each) into the store and draw the panel.
+3. If MIDI Control is off, a note in the top bar offers to turn it on (one SYSTEM Parameter Change), so FM-section moves on the panel show up live.
+
+### Edit and sync
+- **Control in the editor** → store update → coalesced Parameter Change for that address. Name edits send the 10 name bytes.
+- **CC from the synth** (FM section, MIDI Control on) → param update marked "from synth", not sent back. FREQ arrives as mode + coarse + fine CCs within ~2 ms: apply them as one change (one undo step).
+- **Panel edits outside the FM section** send nothing (FINDINGS Q5), but the dump returns them (Q4): a **Resync** button, plus resync on window focus, re-reads the voice (~18 ms).
+- **Program Change from the synth** → dump request for the new Voice, with a guard if the editor has unsaved edits ("the DX switched Voice; your edits are kept in the editor, Send to put them back").
+- **Undo/redo, paste, any multi-value change** → the changed values as Parameter Changes (they don't cut notes; 32 back to back all land, FINDINGS Q7).
+- **Load a voice** (library, import, Send) → whole 7-block bulk; it cuts sounding notes.
+
+### Save and library
+- **Save** (if Q3 finds no remote store): send the voice to the edit buffer → dialog: "On the DX press STORE, choose 1-1…4-8, edit the name if needed, press STORE and YES" → **Verify**: PC to the target (and back) + dump request, compare with what was sent.
+- **Library** in the browser: any number of Voices with tags, plus a "DX memory" view of the 32 locations as last read. **Read all** = 32 × (PC + dump request, no wait) with progress and Stop (~7 s, FINDINGS Q8), then the originally selected Voice is selected again.
+- **Write a bank** to the DX = 32 × guided Store, so it isn't offered in v1; a Voice from the library is opened (sent to the edit buffer) and stored by the user.
+- `.syx` import/export of single Voices and 32-Voice sets in the DX's own 7-block format (Q12).
+
+---
+
+## 5. UI concept
+
+- **Top bar:** port, connection state, firmware, Voice name and location (e.g. "2-5 E.PIANO 1"), Undo/Redo, Resync, Send, Save, ⋯ menu (import/export, settings, demo, help).
+- **Algorithm view:** the 12 topologies drawn as operator boxes with arrows and each operator's own feedback loop (the reface's twist: every operator has feedback, saw or square). Carriers on the bottom row. Clicking an operator selects it; the box shows level, ratio/Hz and on/off. Algorithm picker as thumbnails.
+- **Operator strips (4 side by side):** On, Freq mode, Coarse/Fine with the DX's ratio or Hz readout, Detune, Level, Feedback level + type, Velocity, AMD, PMD on, PEG on, Rate scaling, **KSC** as a small curve around the fixed C3 break point (L/R depth and curve).
+- **EG editor per operator:** the 4-rate/4-level envelope drawn as a graph with draggable points (rates on X, levels on Y), as the DX's EG level/rate pages but all four at once; ghost lines for the other operators.
+- **Common:** Pitch EG (graph, ±48 semitones), LFO (wave, speed, delay, PMD), Part mode, Portamento, Transpose, PB range, two Effect slots whose knob labels follow the type, Name.
+- **Clipboard:** copy/paste an operator, an envelope, or the effects between operators and Voices (Patch Base has this; it is the most useful shortcut in 4-op FM).
+- **Keyboard:** three octaves with velocity by click position, mod wheel and pitch bend strips, as in the siblings.
+- **Library:** list with search, the 32-slot "DX memory" grid, click to audition (send to edit buffer), double-click to edit.
+- **Settings tab (SYSTEM):** TR/RV channel, MIDI Control, Local, Master Tune/Transpose, Sustain pedal, Speaker, Auto Power-Off. Each change is one Parameter Change, so this is cheap to offer.
+
+---
+
+## 6. Phases
+
+**Phase 0: probe (hardware needed).** Scaffold with the siblings' stack, `probe.html` with a port picker, raw SysEx/CC log, buttons for Identity, Voice dump request, SYSTEM dump request, Parameter Request for a chosen address, Parameter Change with editable address/value, partial-block send, "send this .syx", PC sweep over 0–31 with dump requests, a rate test, and Download log / received SysEx. Answer Q1–Q12 in `docs/FINDINGS.md`; save a dump of all 32 factory Voices as a fixture (our own capture; the emulator's 7712-byte dump has no license and is only used locally to try the parser early). **Probe built 2026-10-23** (with `messages.ts`, `codec.ts`, the param tables and 22 tests, which already round-trip that dump byte for byte); **first hardware session 2026-10-23: Q1–Q11 answered, Q12 partly. **Phase 0 done**; the 32-voice capture stays in `local/` (user's own voices, not committed)** (FINDINGS).
+
+**Phase 1: codec and tables.** Finish `codec.ts` and the param tables with encodings (started in Phase 0), CC map, algorithm topologies (from the Owner's Manual algorithm chart, p. 19), display conversions. Tests: checksum and byte count, decode → encode round trip of every fixture voice byte for byte, table ranges, CC ranges. Fake synth for `?demo`.
+
+**Phase 2: editing.** Connect, panel, operator strips, EG graphs, algorithm view, coalesced Parameter Changes, CC follow, Resync, undo/redo, keyboard. Tried on the DX for clicks and send rate (Q7).
+
+**Phase 3: library.** Browser library, Read all (32 Voices), audition, guided Save with verify, `.syx` import/export, init voice (sine, as the DX's VOICE INIT).
+
+**Phase 4: polish and release.** Settings tab, README with screenshot, Help/About, privacy page (a test checks it names every storage key), MIT LICENSE, `start/` launchers, GitHub Pages workflow.
+
+**Later, not in this plan:** randomize/mutate voices, DX7 (6-op) voice import with a lossy 4-op conversion, Looper control (MIDI only exposes clock and tempo).

@@ -143,3 +143,15 @@ Spectral flatness is the geometric mean of the power spectrum over its arithmeti
 | Now: every level and square feedback near the top, OP2–OP4 at fixed frequencies | 0.87 | 0.86 | 0.86 |
 
 The noise is now the same all over the keyboard. Brightness +1 has nothing left to add (1.4 dB), but −1 takes the modulators down and brings back some pitch (12.9 dB).
+
+### Wind, Glassy, and Colour + Space
+
+| Addition | Measured |
+| --- | --- |
+| **Wind** family: breath at the start (a fixed-frequency noise modulator that dies away), a reedy body, delayed vibrato | ≥ 9.6 dB from every other family (brass is the closest); reroll 2.7 dB |
+| **Glassy** character: a 7 : 1 or 14 : 1 modulator at level 90+, ringing for ~0.6 s over the start | bass 5.2, brass 6.9, e-piano 2.6 dB from plain (the e-piano already has its tine). At level 72–84 and ~0.3 s it measured only 1.7–3.9 dB |
+| **Colour** (effect slot 1): drive, wah, chorus, flanger, phaser | drive 11 dB; wah 4 dB in spectrum and 9–15 dB in the envelope |
+| Chorus, flanger, phaser | barely change the averaged spectrum (2–4 dB) but move it: 1.2–1.7 dB per 100 ms on a held organ note, against 0.26 clean |
+| **Space** (slot 2) | dry, room, hall, echo; Ensemble is now Chorus under Colour |
+
+With no colour chosen, the characters bring one: analogue chorus, hollow phaser, noisy wah. The style probe passes 21/21 for families and characters.

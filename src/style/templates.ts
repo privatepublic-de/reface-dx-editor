@@ -111,6 +111,17 @@ export const TEMPLATES: Record<Family, Template> = {
       { ratio: [1, 2], level: [30, 50] },
     ],
   },
+  // breath at the start (a fixed-frequency noise modulator that dies away), a reedy body (OP2, at 2 : 1 a clarinet's
+  // odd harmonics), a little buzz (feedback), delayed vibrato
+  wind: {
+    algorithms: [5], shape: 'bowed', space: 'room', vibrato: [70, 80, 7],
+    ops: [
+      { ratio: 1, level: 120, feedback: [15, 35] },
+      { ratio: [1, 2], level: [64, 76], velocity: [40, 60] },
+      { fixed: [1500, 4000], level: [74, 86], feedback: [115, 127], square: true, fast: true },
+      { ratio: [3, 1], level: [36, 50] },
+    ],
+  },
   lead: {
     algorithms: [1, 2], shape: 'gate', space: 'echo', mono: 'mono', portamento: 30, vibrato: [85, 70, 8],
     ops: [

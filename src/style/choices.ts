@@ -2,21 +2,21 @@
 // treble, an envelope shape with modifiers, and the space. Every field is optional or neutral at 0, so the empty
 // choice changes nothing.
 
-export const FAMILIES = ['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'lead', 'perc', 'noise'] as const
+export const FAMILIES = ['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'wind', 'lead', 'perc', 'noise'] as const
 export type Family = (typeof FAMILIES)[number]
 export const FAMILY_LABELS: Record<Family, string> = {
   bass: 'Bass', organ: 'Organ', strings: 'Strings', pluck: 'Plucked', bell: 'Bell',
-  epiano: 'E-piano', brass: 'Brass', lead: 'Lead', perc: 'Perc', noise: 'FM noise',
+  epiano: 'E-piano', brass: 'Brass', wind: 'Wind', lead: 'Lead', perc: 'Perc', noise: 'FM noise',
 }
 /** What the short labels stand for (tooltips). */
-export const FAMILY_HINTS: Partial<Record<Family, string>> = { pluck: 'Plucked string, guitar', bell: 'Bell, mallet', epiano: 'E-piano, keys', perc: 'Percussion', noise: 'Noise as the sound itself: hiss, wind, sweeps, cymbals' }
+export const FAMILY_HINTS: Partial<Record<Family, string>> = { pluck: 'Plucked string, guitar', bell: 'Bell, mallet', epiano: 'E-piano, keys', perc: 'Percussion', wind: 'Flute, clarinet, sax: breath at the start, a reedy body', noise: 'Noise as the sound itself: hiss, wind, sweeps, cymbals' }
 
 /** Applied in this order: they overlap, so the order is part of the sound. (Classic FM went into Expressive, Gritty
  *  became Drive: measured, they changed the sound less than another seed does; docs/SOUND.md.) */
-export const CHARACTERS = ['analogue', 'hollow', 'metallic', 'noisy'] as const
+export const CHARACTERS = ['analogue', 'hollow', 'metallic', 'glassy', 'noisy'] as const
 export type Character = (typeof CHARACTERS)[number]
 export const CHARACTER_LABELS: Record<Character, string> = {
-  analogue: 'Analogue', hollow: 'Hollow', metallic: 'Metallic', noisy: 'Noisy',
+  analogue: 'Analogue', hollow: 'Hollow', metallic: 'Metallic', glassy: 'Glassy', noisy: 'Noisy',
 }
 
 /** The envelopes offered. (Swell is the brass family's own; Atmo was Pad + long + Hall: measured, both too close
@@ -42,9 +42,14 @@ export const MODE_HINTS: Record<Mode, string> = {
 }
 export const MODE_BYTE: Record<Mode, number> = { poly: 0, mono: 1, legato: 2 }
 
-export const SPACES = ['dry', 'ensemble', 'room', 'hall', 'echo'] as const
+/** The DX's two effect slots: Colour (slot 1) and Space (slot 2). Together they offer all seven effects. */
+export const COLOURS = ['clean', 'drive', 'wah', 'chorus', 'flanger', 'phaser'] as const
+export type Colour = (typeof COLOURS)[number]
+export const COLOUR_LABELS: Record<Colour, string> = { clean: 'Clean', drive: 'Drive', wah: 'Wah', chorus: 'Chorus', flanger: 'Flanger', phaser: 'Phaser' }
+
+export const SPACES = ['dry', 'room', 'hall', 'echo'] as const
 export type Space = (typeof SPACES)[number]
-export const SPACE_LABELS: Record<Space, string> = { dry: 'Dry', ensemble: 'Ensemble', room: 'Room', hall: 'Hall', echo: 'Echo' }
+export const SPACE_LABELS: Record<Space, string> = { dry: 'Dry', room: 'Room', hall: 'Hall', echo: 'Echo' }
 
 export interface StyleChoices {
   /** 'any': a family picked by the seed */
@@ -64,17 +69,17 @@ export interface StyleChoices {
   expressive: number
   /** null: the family's own (or the voice's) */
   mode: Mode | null
-  /** 0 … 1: the distortion effect, and some square feedback */
-  drive: number
+  /** effect slot 1; null: from the family or the characters */
+  colour: Colour | null
   /** null: from the family and characters */
   space: Space | null
   keepFx: boolean
 }
 
 export const NO_STYLE: StyleChoices = {
-  family: null, characters: {}, brightness: 0, treble: 0, shape: null, length: 0, evolving: 0, expressive: 0, mode: null, drive: 0, space: null, keepFx: false,
+  family: null, characters: {}, brightness: 0, treble: 0, shape: null, length: 0, evolving: 0, expressive: 0, mode: null, colour: null, space: null, keepFx: false,
 }
 
 /** Whether anything is chosen at all (nothing: Init is the plain VOICE INIT). */
 export const isEmpty = (c: StyleChoices) =>
-  !c.family && !Object.values(c.characters).some((a) => a) && !c.brightness && !c.treble && !c.shape && !c.length && !c.evolving && !c.expressive && !c.drive && !c.mode && !c.space
+  !c.family && !Object.values(c.characters).some((a) => a) && !c.brightness && !c.treble && !c.shape && !c.length && !c.evolving && !c.expressive && !c.colour && !c.mode && !c.space

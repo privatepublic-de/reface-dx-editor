@@ -25,13 +25,13 @@ const familyOf = (c: StyleChoices, rng: Rng): Family | null => (c.family === 'an
 function transform(v: Voice, c: StyleChoices, rng: Rng, length: number, space: Space | null) {
   const roles = rolesOf(v)
   for (const k of CHARACTERS) if (c.characters[k]) CHARACTER_TRANSFORMS[k](v, roles, c.characters[k]!, rng)
-  applyDrive(v, roles, c.drive, rng)
+  if (c.colour === 'drive') applyDrive(v, roles, rng)
   applyBrightness(v, roles, c.brightness)
   applyTreble(v, roles, c.treble)
   applyLength(v, length)
   applyEvolving(v, roles, c.evolving, rng)
   applyExpressive(v, roles, c.expressive)
-  if (space || c.drive || Object.values(c.characters).some((a) => a)) applyEffects(v, c, space)
+  if (space || c.colour || Object.values(c.characters).some((a) => a)) applyEffects(v, c, space)
   ensureAudible(v, rolesOf(v))
 }
 
@@ -43,7 +43,7 @@ function build(c: StyleChoices, family: Family | null, rng: Rng, spread: number)
   if (t) applyTransients(v, transients(t))
   // a family brings its own length and space
   const length = c.length + (c.length ? 0 : t?.length ?? 0)
-  const space = c.space ?? t?.space ?? (Object.values(c.characters).some((a) => a) || c.drive ? 'dry' : null)
+  const space = c.space ?? t?.space ?? (Object.values(c.characters).some((a) => a) || c.colour ? 'dry' : null)
   transform(v, c, rng, length, space)
   applyMode(v, c)
   setVoiceName(v, styleName(c, family))
@@ -70,26 +70,28 @@ export function styleInit(c: StyleChoices, seed: number, current?: Voice, variat
   return keepEffects(build(c, familyOf(c, rng), rng, spreadOf(variation)), c, current)
 }
 
-/** Where the style editor starts from: a new voice in the style, or the voice you had, morphed towards it. */
-export type Start = 'new' | 'mine'
-
 export interface Preview {
-  start: Start
-  /** the style variation: 0 typical … 1 wild */
-  variation: number
-  /** with 'mine': 0 the voice as it was … 1 the style */
-  morph: number
-  /** random changes on top, 0–100 % */
-  mutate: number
+  /** 0 the voice as it was … 1 a new voice in the style */
+  mix: number
+  /** 0 typical … ½ anywhere in the style's ranges (variation) … 1 mutated on top as well */
+  wild: number
 }
 
+/** How far Wild mutates at the top: half of everything is already chaos. */
+const WILD_MUTATE = 50
+
+/** Wild as the variation within the style and the mutation on top. */
+export const wildParts = (wild: number) => ({ variation: Math.min(1, wild * 2), mutate: Math.round(Math.max(0, wild * 2 - 1) * WILD_MUTATE) })
+
 /** What the style editor plays: everything from the cached `original`, so moving a slider back goes back.
- *  The morph uses one fixed step seed, so a switch flips at the same point every time (it's monotone). */
+ *  Mix 1 is the new voice (named after the style); below, the voice morphs towards it with one fixed step seed, so
+ *  a switch flips at the same point every time (it's monotone) and the voice keeps its name. */
 export function stylePreview(original: Voice, c: StyleChoices, seed: number, p: Preview): Voice {
+  const { variation, mutate: percent } = wildParts(p.wild)
   let v: Voice
-  if (p.start === 'new') v = styleInit(c, seed, original, p.variation)
-  else v = isEmpty(c) || p.morph <= 0 ? cloneVoice(original) : styleAdjust(original, c, p.morph, seed, seed + 1, p.variation)
-  return applyMode(p.mutate > 0 ? mutate(v, p.mutate, seed + 2, c.keepFx) : v, c)
+  if (p.mix >= 1) v = styleInit(c, seed, original, variation)
+  else v = isEmpty(c) || p.mix <= 0 ? cloneVoice(original) : styleAdjust(original, c, p.mix, seed, seed + 1, variation)
+  return applyMode(percent > 0 ? mutate(v, percent, seed + 2, c.keepFx) : v, c)
 }
 
 /** The bytes Adjust and Mutate never blend: a halfway value is another sound. Coarse and fine go together. */
@@ -179,8 +181,8 @@ export function mutate(v: Voice, percent: number, seed: number, keepFx = false):
 
 // ---- names: "Mellow Bass", "Hollow Pad", within the DX's 10 characters ----
 
-const FAMILY_WORD: Record<Family, string> = { bass: 'Bass', organ: 'Organ', strings: 'Strings', pluck: 'Pluck', bell: 'Bell', epiano: 'E.Piano', brass: 'Brass', lead: 'Lead', perc: 'Perc', noise: 'Noise' }
-const CHARACTER_WORD: Record<Character, string> = { analogue: 'Analog', hollow: 'Hollow', metallic: 'Metal', noisy: 'Noisy' }
+const FAMILY_WORD: Record<Family, string> = { bass: 'Bass', organ: 'Organ', strings: 'Strings', pluck: 'Pluck', bell: 'Bell', epiano: 'E.Piano', brass: 'Brass', wind: 'Wind', lead: 'Lead', perc: 'Perc', noise: 'Noise' }
+const CHARACTER_WORD: Record<Character, string> = { analogue: 'Analog', hollow: 'Hollow', metallic: 'Metal', glassy: 'Glass', noisy: 'Noisy' }
 const SHAPE_WORD: Partial<Record<NonNullable<StyleChoices['shape']>, string>> = { pad: 'Pad', bowed: 'Bowed', reverse: 'Rev', pluck: 'Pluck' }
 
 export function styleName(c: StyleChoices, family: Family | null): string {
@@ -188,7 +190,7 @@ export function styleName(c: StyleChoices, family: Family | null): string {
   const strongest = CHARACTERS.filter((k) => c.characters[k]).sort((x, y) => (c.characters[y] ?? 0) - (c.characters[x] ?? 0))
   const words = [
     ...strongest.map((k) => CHARACTER_WORD[k]),
-    ...(c.drive >= 0.5 ? ['Driven', 'Drive'] : []),
+    ...(c.colour === 'drive' ? ['Driven', 'Drive'] : []),
     ...(c.brightness <= -0.3 ? ['Mellow', 'Soft'] : c.brightness >= 0.3 ? ['Bright'] : []),
     ...(family && c.shape && SHAPE_WORD[c.shape] ? [SHAPE_WORD[c.shape]!] : []),
   ]

@@ -1,14 +1,15 @@
-// Init and the style editor (PLAN §7.2). Init is the plain VOICE INIT in one click. Style… opens a sub-editor
-// docked beside the editor: it caches the voice, and every choice plays on the DX at once (paced Parameter Changes,
-// sounding notes keep sounding). It starts from a new voice in the style (typical … wild) or from your voice moved
-// towards it; Mutate adds random changes. Apply keeps what you hear as one undo step, Cancel (or Escape) goes back.
-// Every chip keeps its size whatever its state, so nothing moves while you choose.
+// Init and the style editor (PLAN §7.2). Init is the plain VOICE INIT in one click. The Style tab opens a panel
+// joined to it, docked on the left: it caches the voice, and every choice plays on the DX at once (paced Parameter
+// Changes, sounding notes keep sounding). Mix goes from the voice as it was to a new voice in the style; Wild from
+// typical to anywhere in the style's ranges and then mutated; the dice tries another variation. Apply keeps what
+// you hear as one undo step, Cancel (or Escape) goes back. Every chip keeps its size, so nothing moves while you choose.
 import { useEffect, useRef } from 'react'
 import {
-  CHARACTER_LABELS, CHARACTERS, FAMILIES, FAMILY_HINTS, FAMILY_LABELS, isEmpty, MODE_BYTE, MODE_HINTS, MODE_LABELS, MODES, SHAPE_HINTS, SHAPE_LABELS, SHAPES, SPACE_LABELS, SPACES,
-  type Character, type StyleChoices,
+  CHARACTER_LABELS, CHARACTERS, COLOUR_LABELS, COLOURS, FAMILIES, FAMILY_HINTS, FAMILY_LABELS, isEmpty, MODE_BYTE, MODE_HINTS, MODE_LABELS, MODES, SHAPE_HINTS,
+  SHAPE_LABELS, SHAPES, SPACE_LABELS, SPACES, type Character,
 } from '../style/choices'
 import { TEMPLATES } from '../style/templates'
+import { colourOf } from '../style/transforms'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
 import { useStyle } from './styleStore'
@@ -29,54 +30,27 @@ export function InitButton() {
   )
 }
 
+/** The Style tab: opens the panel, and while it's open stays lit and joins it. */
 export function StyleMenu() {
   const open = useStyle((s) => s.open)
   const isOpen = useStyle((s) => !!s.original)
+  const busy = useBusy()
   return (
-    <button className="voice-title__init" onClick={open} aria-expanded={isOpen} disabled={useBusy() || isOpen}
-      title="The style editor: a new voice in a style, or this voice towards one, heard as you choose">
-      Style…
+    <button className={`voice-title__init style-tab${isOpen ? ' style-tab--open' : ''}`} onClick={open} aria-expanded={isOpen} aria-controls="style-panel"
+      disabled={busy && !isOpen} title={isOpen ? 'The style editor is open' : 'Make this voice in a style, and hear it as you choose'}>
+      Style
     </button>
   )
 }
 
-/** The character's amount steps through off → some → much on each click. */
-const nextAmount = (a: number) => (a <= 0 ? 0.5 : a < 1 ? 1 : 0)
-const dots = (a: number) => (a <= 0 ? '' : a < 1 ? '•' : '••')
-const signed = (x: number) => `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(1)}`
-
-/** The choices read back in one line. */
-function summary(c: StyleChoices): string {
-  if (isEmpty(c)) return 'Nothing chosen yet: New voice gives the plain VOICE INIT.'
-  const parts = [
-    c.family === 'any' ? 'Any family' : c.family && FAMILY_LABELS[c.family],
-    c.shape && SHAPE_LABELS[c.shape],
-    c.mode && MODE_LABELS[c.mode],
-    ...CHARACTERS.filter((k) => c.characters[k]).map((k) => `${CHARACTER_LABELS[k]} ${dots(c.characters[k]!)}`),
-    c.brightness && `Brightness ${signed(c.brightness)}`,
-    c.length && `Length ${signed(c.length)}`,
-    c.evolving && 'Evolving',
-    c.expressive && 'Expressive',
-    c.treble && `Treble ${signed(c.treble)}`,
-    c.drive && 'Drive',
-    c.space && SPACE_LABELS[c.space],
-    c.keepFx && 'your effects',
-  ]
-  return parts.filter(Boolean).join(' · ')
-}
-
-/** The style editor, docked beside the editor (which stays visible, locked, its knobs following the preview). */
 export function StyleSheet() {
-  const st = useStyle()
-  const { choices: c, start, amount, variation, mutate, more, dirty, set, setStart, setAmount, setVariation, setMutate, setMore, another, reset, apply, cancel } = st
-  const empty = isEmpty(c)
-  const heading = useRef<HTMLHeadingElement>(null)
-  // what the family brings when no envelope or space is chosen: shown as an outline, not as a choice
+  const { choices: c, mix, wild, more, dirty, original, set, setMix, setWild, setMore, another, reset, apply, cancel } = useStyle()
+  const first = useRef<HTMLDivElement>(null)
+  // what the family brings when nothing is chosen: shown outlined, not as a choice
   const template = c.family && c.family !== 'any' ? TEMPLATES[c.family] : null
-  // the play mode it keeps when none is chosen: the family's, or (from my voice, or without a family) the voice's
-  const original = useStyle((s) => s.original)
-  const ownMode = template && start === 'new' ? MODE_BYTE[template.mono ?? 'poly'] : original?.common[0x0d]
-  useEffect(() => heading.current?.focus(), [])
+  const ownMode = template && mix >= 1 ? MODE_BYTE[template.mono ?? 'poly'] : original?.common[0x0d]
+  const familyName = template ? FAMILY_LABELS[c.family as keyof typeof FAMILY_LABELS].toLowerCase() : ''
+  useEffect(() => first.current?.querySelector('button')?.focus(), [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || (e.target as Element).closest?.('dialog')) return
@@ -87,46 +61,29 @@ export function StyleSheet() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
-    <aside className="style-sheet" role="dialog" aria-labelledby="style-sheet-title">
-      <div className="style-sheet__head">
-        <h3 id="style-sheet-title" tabIndex={-1} ref={heading}>Style</h3>
-        <div className="seg" role="group" aria-label="Start from">
-          <button className={start === 'new' ? 'on' : ''} aria-pressed={start === 'new'} onClick={() => setStart('new')} title="A new voice in the style">New voice</button>
-          <button className={start === 'mine' ? 'on' : ''} aria-pressed={start === 'mine'} onClick={() => setStart('mine')} title="The voice you had, moved towards the style">My voice</button>
-        </div>
-      </div>
-      <div className="style-panel__summary">
-        <span>{summary(c)}</span>
-        <button className={`link${empty ? ' hidden' : ''}`} onClick={reset} tabIndex={empty ? -1 : 0}>Clear</button>
-      </div>
-
+    <aside className="style-sheet" id="style-panel" role="dialog" aria-label="Style">
       <div className="style-sheet__body">
         <Group title="Family">
-          <div className="chips chips--6">
+          <div className="chips chips--4" ref={first}>
             {FAMILIES.map((f) => (
               <Chip key={f} on={c.family === f} onClick={() => set({ family: c.family === f ? null : f })} title={FAMILY_HINTS[f]}>{FAMILY_LABELS[f]}</Chip>
             ))}
-            <Chip on={c.family === 'any'} onClick={() => set({ family: c.family === 'any' ? null : 'any' })} title="A family picked at random (Another picks again)">Any</Chip>
+            <Chip on={c.family === 'any'} onClick={() => set({ family: c.family === 'any' ? null : 'any' })} title="A family picked at random (the dice picks again)">Any</Chip>
           </div>
         </Group>
 
-        <Group title="Character" note="click for some, again for much, a third time for off">
-          <div className="chips chips--4">
+        <Group title="Character">
+          <div className="chips chips--5">
             {CHARACTERS.map((k: Character) => {
-              const a = c.characters[k] ?? 0
-              return (
-                <Chip key={k} on={a > 0} onClick={() => set({ characters: { ...c.characters, [k]: nextAmount(a) } })} title={`${CHARACTER_LABELS[k]}: ${a === 0 ? 'off' : a < 1 ? 'some' : 'much'}`}>
-                  {CHARACTER_LABELS[k]}
-                  <span className="chip__amount" aria-hidden>{dots(a)}</span>
-                </Chip>
-              )
+              const on = !!c.characters[k]
+              return <Chip key={k} on={on} onClick={() => set({ characters: { ...c.characters, [k]: on ? 0 : 1 } })}>{CHARACTER_LABELS[k]}</Chip>
             })}
           </div>
         </Group>
 
         <Slider label="Brightness" left="mellow" right="bright" value={c.brightness} min={-1} onChange={(v) => set({ brightness: v })} />
 
-        <Group title="Envelope" note={template && !c.shape ? `outlined: the ${FAMILY_LABELS[c.family as keyof typeof FAMILY_LABELS].toLowerCase()}’s own` : undefined}>
+        <Group title="Envelope" note={template && !c.shape ? `outlined: the ${familyName}’s own` : undefined}>
           <div className="chips chips--6">
             {SHAPES.map((s) => (
               <Chip key={s} on={c.shape === s} implied={!c.shape && template?.shape === s} onClick={() => set({ shape: c.shape === s ? null : s })} title={SHAPE_HINTS[s]}>
@@ -136,7 +93,7 @@ export function StyleSheet() {
           </div>
         </Group>
 
-        <Group title="Play" note={!c.mode ? `outlined: ${template && start === 'new' ? `the ${FAMILY_LABELS[c.family as keyof typeof FAMILY_LABELS].toLowerCase()}’s own` : 'as your voice has it'}` : undefined}>
+        <Group title="Play" note={!c.mode ? `outlined: ${template && mix >= 1 ? `the ${familyName}’s own` : 'as your voice has it'}` : undefined}>
           <div className="chips chips--3">
             {MODES.map((m) => (
               <Chip key={m} on={c.mode === m} implied={!c.mode && ownMode === MODE_BYTE[m]} onClick={() => set({ mode: c.mode === m ? null : m })} title={MODE_HINTS[m]}>
@@ -147,16 +104,23 @@ export function StyleSheet() {
         </Group>
 
         <details className="style-panel__more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
-          <summary>More: length, movement, treble, drive, space and effects</summary>
+          <summary>More: length, movement, treble, effects</summary>
           <div className="style-panel__sliders">
             <Slider label="Length" left="short" right="long" value={c.length} min={-1} onChange={(v) => set({ length: v })} />
             <Slider label="Evolving" left="still" right="moving" value={c.evolving} min={0} onChange={(v) => set({ evolving: v })} />
             <Slider label="Expressive" left="even" right="touch" value={c.expressive} min={0} onChange={(v) => set({ expressive: v })} />
             <Slider label="Treble" left="tamer" right="brighter" value={c.treble} min={-1} onChange={(v) => set({ treble: v })} title="How the brightness changes up the keyboard" />
-            <Slider label="Drive" left="clean" right="driven" value={c.drive} min={0} onChange={(v) => set({ drive: v })} title="The distortion effect, and square feedback on a modulator" />
           </div>
+          <Group title="Colour" note={!c.colour ? 'outlined: what the characters bring' : undefined}>
+            <div className="chips chips--6">
+              {COLOURS.map((k) => (
+                <Chip key={k} on={c.colour === k} implied={!c.colour && colourOf(c) === k} onClick={() => set({ colour: c.colour === k ? null : k })}
+                  title={k === 'drive' ? 'Distortion, and square feedback on a modulator' : undefined}>{COLOUR_LABELS[k]}</Chip>
+              ))}
+            </div>
+          </Group>
           <Group title="Space">
-            <div className="chips chips--5">
+            <div className="chips chips--4">
               {SPACES.map((s) => (
                 <Chip key={s} on={c.space === s} implied={!c.space && template?.space === s} onClick={() => set({ space: c.space === s ? null : s })}>{SPACE_LABELS[s]}</Chip>
               ))}
@@ -170,17 +134,24 @@ export function StyleSheet() {
       </div>
 
       <div className="style-sheet__foot">
-        <div className="style-panel__sliders">
-          {start === 'new'
-            ? <Slider label="Variation" left="typical" right="wild" value={variation} min={0} onChange={setVariation} />
-            : <Slider label="Towards" left="my voice" right="the style" value={amount} min={0} onChange={setAmount} title="0: your voice as it was; all the way: the style" />}
-          <Slider label="Mutate" left="none" right="much" value={mutate / 100} min={0} onChange={(v) => setMutate(Math.round(v * 100))} title="Random changes on top" />
+        <Slider label="Mix" left="my voice" right="style" value={mix} min={0} onChange={setMix} percent
+          title="All the way: a new voice in the style. Less: your voice moved that far towards it." />
+        <div className="style-sheet__wild">
+          <Slider label="Wild" left="typical" right="mutated" value={wild} min={0} onChange={setWild}
+            title="First half: further into the style’s ranges. Second half: random changes on top as well." />
+          <button className="icon dice" onClick={another} aria-label="Another variation" title="Another variation">
+            <svg viewBox="0 0 16 16" className="icon__svg" aria-hidden="true">
+              <rect x="2" y="2" width="12" height="12" rx="2.5" />
+              <circle cx="5.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="10.5" cy="10.5" r=".9" fill="currentColor" />
+              <circle cx="10.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="5.5" cy="10.5" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" />
+            </svg>
+          </button>
         </div>
         <div className="style-sheet__actions">
-          <button onClick={another} title="Another variation of the style (and of the mutation)">Another</button>
-          <span className="note">{dirty ? 'You hear every change. Apply keeps it as one undo step.' : 'Your voice plays as it was until you change something.'}</span>
+          <button className={`link${isEmpty(c) ? ' hidden' : ''}`} onClick={reset} tabIndex={isEmpty(c) ? -1 : 0}>Clear choices</button>
+          <span />
           <button onClick={cancel} title="Back to the voice as it was (Escape)">Cancel</button>
-          <button className="primary" onClick={apply} disabled={!dirty}>Apply</button>
+          <button className="primary" onClick={apply} disabled={!dirty} title={dirty ? 'Keep what you hear (one undo step)' : 'Change something first'}>Apply</button>
         </div>
       </div>
     </aside>

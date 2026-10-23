@@ -7,7 +7,7 @@ import { ALGORITHMS } from '../params/algorithms'
 import { fixedBytes, ratioBytes, ratioOf } from '../params/display'
 import { shiftRates } from '../params/envelope'
 import type { Voice } from '../sysex/codec'
-import type { Character, Space, StyleChoices } from './choices'
+import { CHARACTERS, type Character, type Colour, type Space, type StyleChoices } from './choices'
 import type { Rng } from './random'
 
 const clamp = (v: number, lo = 0, hi = 127) => Math.max(lo, Math.min(hi, Math.round(v)))
@@ -64,6 +64,17 @@ export const CHARACTER_TRANSFORMS: Record<Character, (v: Voice, r: Roles, a: num
     for (const op of r.modulators) if (rng.chance(0.4 + 0.6 * a)) setRatio(v, op, ratio(v, op) * rng.pick([1.41, 1.73, 2.27, 2.62, 3.14]))
     if (a > 0.7) setRatio(v, r.carriers[r.carriers.length - 1], ratio(v, r.carriers[r.carriers.length - 1]) * 1.41)
   },
+  // the DX sparkle: a high-ratio modulator (or, with none, a carrier) that rings briefly over the start of each note
+  glassy(v, r, a, rng) {
+    const op = r.modulators.length ? r.modulators[r.modulators.length - 1] : r.carriers[r.carriers.length - 1]
+    const o = v.ops[op]
+    setRatio(v, op, ratio(v, r.carriers[0]) * rng.pick([7, 14, 14]))
+    if (o[0x15] !== 0) o.set([0, ...ratioBytes(14)], 0x15) // a fixed frequency doesn't follow the keys: make it a ratio
+    o[0x12] = clamp(Math.max(o[0x12], 90 + 8 * a))
+    o.set([127, 74, 60, 70], 0x01) // instant, gone in ~0.6 s
+    o.set([127, 0, 0, 0], 0x05)
+    raise(v, op, 0x11, 55)
+  },
   // noise on a pitched sound: a fixed-frequency modulator and a lot of square feedback on it (the level stays:
   // no amplitude LFO, that was what made it 7 dB quieter)
   noisy(v, r, a, rng) {
@@ -78,12 +89,12 @@ export const CHARACTER_TRANSFORMS: Record<Character, (v: Voice, r: Roles, a: num
   },
 }
 
-/** Clean (0) … driven (1): square feedback on a modulator; the distortion effect comes with applyEffects. */
-export function applyDrive(v: Voice, r: Roles, d: number, rng: Rng) {
-  if (!d || !r.modulators.length) return
+/** Drive: square feedback on a modulator; the distortion effect comes with applyEffects. */
+export function applyDrive(v: Voice, r: Roles, rng: Rng) {
+  if (!r.modulators.length) return
   const op = rng.pick(r.modulators)
   v.ops[op][0x14] = 1
-  raise(v, op, 0x13, 30 + 50 * d)
+  raise(v, op, 0x13, 65)
 }
 
 /** Mellow (−1) … bright (+1). The modulators' levels, up to 22 up and 38 down (the curve is flat below ~60), and
@@ -150,27 +161,32 @@ export function applyExpressive(v: Voice, r: Roles, x: number) {
   for (let op = 0; op < 4; op++) raise(v, op, 0x09, 20 + 50 * x)
 }
 
-/** Effect slot 1 from the strongest of these characters, slot 2 from the space. [type, param 1, param 2] */
-const CHARACTER_FX: Partial<Record<Character, (a: number) => [number, number, number]>> = {
-  analogue: () => [3, 60, 35],
-  hollow: () => [5, 55, 40],
-  noisy: (a) => [2, clamp(50 + 60 * a), 70],
+/** Effect slot 1, the colour, and slot 2, the space: [type, param 1, param 2] (EFFECT_PARAM_LABELS). */
+const COLOUR_FX: Record<Colour, [number, number, number]> = {
+  clean: [0, 64, 64],
+  drive: [1, 90, 50],
+  wah: [2, 75, 70],
+  chorus: [3, 100, 40],
+  flanger: [4, 100, 35],
+  phaser: [5, 110, 45],
 }
 const SPACE_FX: Record<Space, [number, number, number]> = {
   dry: [0, 64, 64],
-  ensemble: [3, 75, 30],
   room: [7, 40, 40],
   hall: [7, 70, 100],
   echo: [6, 50, 70],
 }
+/** The colour a character brings when none is chosen (the first of them that has one). */
+const CHARACTER_COLOUR: Partial<Record<Character, Colour>> = { analogue: 'chorus', hollow: 'phaser', noisy: 'wah' }
 
-/** Slot 1: Drive's distortion, else the strongest character's effect; slot 2: the space (kept when null). */
+/** The colour that sounds: the chosen one, else the characters'. */
+export const colourOf = (c: StyleChoices): Colour =>
+  c.colour ?? CHARACTERS.filter((k) => c.characters[k]).map((k) => CHARACTER_COLOUR[k]).find(Boolean) ?? 'clean'
+
+/** Slot 1 from the colour, slot 2 from the space (kept when null). */
 export function applyEffects(v: Voice, c: StyleChoices, space: Space | null) {
   if (c.keepFx) return
-  const strongest = (Object.keys(CHARACTER_FX) as Character[])
-    .filter((k) => (c.characters[k] ?? 0) > 0)
-    .sort((x, y) => (c.characters[y] ?? 0) - (c.characters[x] ?? 0))[0]
-  v.common.set(c.drive ? [1, clamp(30 + 90 * c.drive), 50] : strongest ? CHARACTER_FX[strongest]!(c.characters[strongest]!) : [0, 64, 64], 0x1d)
+  v.common.set(COLOUR_FX[colourOf(c)], 0x1d)
   if (space) v.common.set(SPACE_FX[space], 0x20)
 }
 

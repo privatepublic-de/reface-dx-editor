@@ -29,14 +29,14 @@ const FAMILY_NOTE: Partial<Record<Family, number>> = { bass: 36, perc: 48, bell:
 const noteFor = (f: Family | null) => (f && FAMILY_NOTE[f]) || 60
 
 const TAKES: Take[] = [
-  ...(['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'lead', 'perc', 'noise'] as Family[]).map((family) => ({
+  ...(['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'wind', 'lead', 'perc', 'noise'] as Family[]).map((family) => ({
     group: 'families', label: family, choices: { family }, note: noteFor(family), holdS: ['strings', 'brass'].includes(family) ? 1.5 : 1.0,
   })),
   ...(['bass', 'epiano'] as Family[]).flatMap((family) =>
     [-1, 0, 1].map((brightness) => ({ group: 'brightness', label: `${family} b${brightness}`, choices: { family, brightness, space: 'dry' as const }, note: noteFor(family), holdS: 1.0 })),
   ),
   { group: 'characters', label: 'bass plain', choices: { family: 'bass', space: 'dry' }, note: 48, holdS: 1.0 },
-  ...(['analogue', 'hollow', 'metallic', 'noisy'] as Character[]).map((k) => ({
+  ...(['analogue', 'hollow', 'metallic', 'glassy', 'noisy'] as Character[]).map((k) => ({
     group: 'characters', label: `bass ${k}`, choices: { family: 'bass' as const, characters: { [k]: 1 }, space: 'dry' as const }, note: 48, holdS: 1.0,
   })),
   // on brass: one carrier, no detune, so no beating that would look like an envelope

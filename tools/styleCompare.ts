@@ -3,9 +3,9 @@
 // and late (0.8–1.2 s), in dB. Two takes' distance is the mean dB difference, for the envelope and the spectrum
 // separately (floor 60 dB below the louder). The yardstick is the family itself with another seed (what Another does).
 // Also: evolving (spectral movement during a 4 s hold), expressive (velocity 40 against 120), treble (C1, C3, C5).
-// Usage: npx vite-node tools/styleCompare.ts [families characters brightness shapes evolving expressive treble]
+// Usage: npx vite-node tools/styleCompare.ts [families characters colours brightness shapes evolving expressive treble]
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { NO_STYLE, SHAPES, type Character, type Family, type StyleChoices } from '../src/style/choices'
+import { COLOURS, NO_STYLE, SHAPES, type Character, type Family, type StyleChoices } from '../src/style/choices'
 import { styleInit } from '../src/style/style'
 import { db, envelope, noteHz, spectrum } from './dxAudio'
 import { openDx, RATE } from './dxTake'
@@ -101,7 +101,7 @@ function matrix(title: string, labels: string[]) {
   }
 }
 
-const FAMILIES: Family[] = ['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'lead', 'perc', 'noise']
+const FAMILIES: Family[] = ['bass', 'organ', 'strings', 'pluck', 'bell', 'epiano', 'brass', 'wind', 'lead', 'perc', 'noise']
 try {
   if (want('families')) {
     for (const f of FAMILIES) {
@@ -113,14 +113,29 @@ try {
     matrix('Families at C3', FAMILIES)
   }
   if (want('characters')) {
-    const KS: Character[] = ['analogue', 'hollow', 'metallic', 'noisy']
+    const KS: Character[] = ['analogue', 'hollow', 'metallic', 'glassy', 'noisy']
     for (const f of ['bass', 'brass', 'epiano'] as Family[]) {
       await print(`${f} plain`, { family: f })
       for (const k of KS) await print(`${f} ${k}`, { family: f, characters: { [k]: 1 } })
-      await print(`${f} drive`, { family: f, drive: 1 })
       console.log(`\nCharacters on ${f}, against plain:`)
-      for (const k of [...KS, 'drive']) console.log(`  ${k.padEnd(10)} ${fmt(distance(prints.get(`${f} plain`)!, prints.get(`${f} ${k}`)!))}`)
+      for (const k of KS) console.log(`  ${k.padEnd(10)} ${fmt(distance(prints.get(`${f} plain`)!, prints.get(`${f} ${k}`)!))}`)
       matrix(`Characters on ${f}`, KS.map((k) => `${f} ${k}`))
+    }
+  }
+  if (want('colours')) {
+    for (const f of ['brass', 'epiano'] as Family[]) {
+      for (const k of COLOURS) await print(`${f} ${k}`, { family: f, colour: k })
+      console.log(`\nColours on ${f}, against clean:`)
+      for (const k of COLOURS.slice(1)) console.log(`  ${k.padEnd(10)} ${fmt(distance(prints.get(`${f} clean`)!, prints.get(`${f} ${k}`)!))}`)
+    }
+    console.log('\nColours: how much the spectrum moves during a 3 s gate-shaped hold (mean change per 100 ms band frame, dB):')
+    for (const k of COLOURS) {
+      const x = await take(`organ move ${k}`, { family: 'organ', colour: k }, 48, { hold: 3 })
+      const t0 = onsetS(x)
+      const frames = Array.from({ length: 22 }, (_, i) => bandsDb(slice(x, t0 + 0.5 + i * 0.1, t0 + 0.5 + i * 0.1 + 4096 / RATE), 4096))
+      let flux = 0
+      for (let i = 1; i < frames.length; i++) flux += dist(frames[i], frames[i - 1])
+      console.log(`  ${k.padEnd(8)} ${(flux / (frames.length - 1)).toFixed(2)} dB`)
     }
   }
   if (want('brightness')) {

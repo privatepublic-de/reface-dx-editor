@@ -61,14 +61,18 @@ describe('Init with a style', () => {
     expect(rolesOf(treble).modulators.every((op) => treble.ops[op][0x0b] === 40 && treble.ops[op][0x0d] === 0 && treble.ops[op][0x0c] === 3)).toBe(true) // −LIN up, +LIN down
     const hall = styleInit(style({ shape: 'pad', space: 'hall' }), 1)
     expect(hall.common[0x20]).toBe(7) // reverb
-    const driven = styleInit(style({ family: 'lead', drive: 1 }), 1)
+    const driven = styleInit(style({ family: 'lead', colour: 'drive' }), 1)
     expect(driven.common[0x1d]).toBe(1) // distortion
-    expect(styleInit(style({ drive: 1 }), 1).common[0x1d]).toBe(1) // without a family too
+    expect(styleInit(style({ colour: 'drive' }), 1).common[0x1d]).toBe(1) // without a family too
+    expect(styleInit(style({ family: 'bass', characters: { hollow: 1 } }), 1).common[0x1d]).toBe(5) // a character's colour: phaser
+    expect(styleInit(style({ family: 'bass', characters: { hollow: 1 }, colour: 'wah' }), 1).common[0x1d]).toBe(2) // the chosen one wins
+    const glassy = styleInit(style({ family: 'bass', characters: { glassy: 1 } }), 1)
+    expect(glassy.ops.some((op) => op[0x15] === 0 && op[0x16] >= 7 && op[0x06] === 0)).toBe(true) // a high ratio that dies away
   })
 
   it('keeps the effects of the voice it replaces with keepFx', () => {
     const now = DEMO_VOICES[0]
-    const v = styleInit(style({ family: 'bass', drive: 1, space: 'hall', keepFx: true }), 1, now)
+    const v = styleInit(style({ family: 'bass', colour: 'drive', space: 'hall', keepFx: true }), 1, now)
     expect(Array.from(v.common.subarray(0x1d, 0x23))).toEqual(Array.from(now.common.subarray(0x1d, 0x23)))
   })
 
@@ -112,7 +116,7 @@ describe('Adjust', () => {
   })
 
   it('keeps the effects with keepFx', () => {
-    const v = styleAdjust(voice, style({ family: 'lead', drive: 1, keepFx: true }), 1, 3, 3)
+    const v = styleAdjust(voice, style({ family: 'lead', colour: 'drive', keepFx: true }), 1, 3, 3)
     expect(Array.from(v.common.subarray(0x1d, 0x23))).toEqual(Array.from(voice.common.subarray(0x1d, 0x23)))
   })
 })
@@ -154,26 +158,27 @@ describe('Variation and Mutate', () => {
 describe('the style editor preview', () => {
   const original = DEMO_VOICES[2]
   const c = style({ family: 'bell', characters: { hollow: 1 }, brightness: 0.5 })
-  const p = { start: 'mine' as const, variation: 0.2, morph: 0, mutate: 0 }
+  const p = { mix: 0, wild: 0.2 }
 
-  it('my voice at 0 and no mutation is the voice as it was', () => {
+  it('mix 0 is the voice as it was', () => {
     expect(stylePreview(original, c, 5, p)).toEqual(original)
   })
 
-  it('the morph goes all the way to the style, and coming back goes back', () => {
-    const full = stylePreview(original, c, 5, { ...p, morph: 1 })
-    expect(distance(full, styleInit(c, 5, undefined, 0.2))).toBe(0)
-    const ds = [0, 0.25, 0.5, 0.75, 1].map((m) => distance(stylePreview(original, c, 5, { ...p, morph: m }), full))
+  it('mix 1 is a new voice in the style; the way there gets closer step by step, and coming back goes back', () => {
+    const full = stylePreview(original, c, 5, { ...p, mix: 1 })
+    expect(full).toEqual(styleInit(c, 5, original, 0.4))
+    const ds = [0, 0.25, 0.5, 0.75, 0.95].map((m) => distance(stylePreview(original, c, 5, { ...p, mix: m }), full))
     for (let i = 1; i < ds.length; i++) expect(ds[i]).toBeLessThan(ds[i - 1])
-    expect(stylePreview(original, c, 5, { ...p, morph: 0.4 })).toEqual(stylePreview(original, c, 5, { ...p, morph: 0.4 }))
+    expect(stylePreview(original, c, 5, { ...p, mix: 0.4 })).toEqual(stylePreview(original, c, 5, { ...p, mix: 0.4 }))
   })
 
-  it('new voice is Init in the style; mutation goes on top, the same for the same seed', () => {
-    expect(stylePreview(original, c, 5, { ...p, start: 'new' })).toEqual(styleInit(c, 5, original, 0.2))
-    const m = stylePreview(original, c, 5, { ...p, mutate: 30 })
-    expect(distance(m, original)).toBeGreaterThan(0)
-    expect(stylePreview(original, c, 5, { ...p, mutate: 30 })).toEqual(m)
+  it('wild: the first half widens the variation, the second half mutates on top, the same for the same seed', () => {
+    expect(stylePreview(original, c, 5, { mix: 1, wild: 0.5 })).toEqual(styleInit(c, 5, original, 1))
+    const m = stylePreview(original, c, 5, { mix: 1, wild: 1 })
+    expect(distance(m, styleInit(c, 5, original, 1))).toBeGreaterThan(0)
+    expect(stylePreview(original, c, 5, { mix: 1, wild: 1 })).toEqual(m)
     guard(m)
+    expect(distance(stylePreview(original, c, 5, { mix: 0, wild: 1 }), original)).toBeGreaterThan(0) // mutation on my voice too
   })
 })
 
@@ -183,9 +188,7 @@ describe('the play mode', () => {
     expect(styleInit(style({ family: 'lead', mode: 'poly' }), 1).common[0x0d]).toBe(0)
     expect(styleInit(style({ shape: 'pad', mode: 'legato' }), 1).common[0x0d]).toBe(2)
     const mine = DEMO_VOICES[0]
-    for (const morph of [0, 0.3, 1]) {
-      expect(stylePreview(mine, style({ mode: 'legato' }), 4, { start: 'mine', variation: 0, morph, mutate: 60 }).common[0x0d]).toBe(2)
-    }
-    expect(stylePreview(mine, style({ mode: 'mono' }), 4, { start: 'mine', variation: 0, morph: 0, mutate: 0 }).common.subarray(0x0e)).toEqual(mine.common.subarray(0x0e))
+    for (const mix of [0, 0.3, 1]) expect(stylePreview(mine, style({ mode: 'legato' }), 4, { mix, wild: 1 }).common[0x0d]).toBe(2)
+    expect(stylePreview(mine, style({ mode: 'mono' }), 4, { mix: 0, wild: 0 }).common.subarray(0x0e)).toEqual(mine.common.subarray(0x0e))
   })
 })

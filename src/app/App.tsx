@@ -12,6 +12,8 @@ import { useStyle } from './styleStore'
 import { usePopover } from './usePopover'
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform)
+/** the style panel's width, px (narrower windows: all of it) */
+const SHEET_WIDTH = 540
 
 const STATUS_TEXT: Record<Status, string> = {
   offline: 'Not connected',
@@ -36,23 +38,36 @@ export function App() {
         <Keyboard />
         <LibraryPanel />
       </main>
+      {styling && <div className="style-scrim" aria-hidden="true" />}
       {styling && <StyleSheet />}
     </>
   )
 }
 
 /** While the style editor is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
- *  the bottom, and the sheet fills the space between the bar and the keyboard (their heights as CSS variables). */
+ *  the bottom, and the panel fills the space between the bar and the keyboard, under the Style tab it hangs from
+ *  (the heights, the panel's left edge and the tab's drop to the bar's edge as CSS variables). */
 function useStyleLayout(styling: boolean) {
   useEffect(() => {
     const locked = ['.bar', '.stage', '.library'].flatMap((q) => [...document.querySelectorAll(q)])
     locked.forEach((el) => el.toggleAttribute('inert', styling))
+    document.body.classList.toggle('styling', styling)
     if (!styling) return
     const root = document.documentElement
     const measure = () => {
-      root.style.setProperty('--bar-h', `${document.querySelector('.bar')?.getBoundingClientRect().height ?? 0}px`)
+      const bar = document.querySelector('.bar')?.getBoundingClientRect()
+      const tab = document.querySelector('.style-tab')?.getBoundingClientRect()
+      const width = Math.min(SHEET_WIDTH, window.innerWidth)
+      root.style.setProperty('--bar-h', `${bar?.height ?? 0}px`)
       root.style.setProperty('--keys-h', `${document.querySelector('.keys')?.getBoundingClientRect().height ?? 0}px`)
+      if (bar && tab) {
+        root.style.setProperty('--sheet-left', `${Math.max(0, Math.min(tab.left - 16, window.innerWidth - width))}px`)
+        root.style.setProperty('--tab-drop', `${Math.max(0, bar.bottom - tab.bottom)}px`)
+        root.style.setProperty('--tab-left', `${tab.left}px`)
+        root.style.setProperty('--tab-w', `${tab.width}px`)
+      }
     }
+    window.addEventListener('resize', measure)
     measure()
     const watch = new ResizeObserver(measure)
     for (const q of ['.bar', '.keys']) {
@@ -60,8 +75,10 @@ function useStyleLayout(styling: boolean) {
       if (el) watch.observe(el)
     }
     return () => {
+      window.removeEventListener('resize', measure)
       watch.disconnect()
       locked.forEach((el) => el.removeAttribute('inert'))
+      document.body.classList.remove('styling')
     }
   }, [styling])
 }

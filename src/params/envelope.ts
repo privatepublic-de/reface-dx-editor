@@ -28,3 +28,26 @@ export function linkedEgChanges(start: Voice, op: number, kind: EgKind, stage: n
   }
   return sameRole(start.common[0x10], op).map((o) => [[0x31, o, at], [follow(o)]])
 }
+
+/** An envelope as four rates and four levels. */
+export interface Eg {
+  rates: readonly number[]
+  levels: readonly number[]
+}
+
+export function setEg(voice: Voice, op: number, eg: Eg) {
+  eg.rates.forEach((r, i) => (voice.ops[op][egOffset('rate', i)] = clamp(r)))
+  eg.levels.forEach((l, i) => (voice.ops[op][egOffset('level', i)] = clamp(l)))
+}
+
+/** Longer (`by` < 0) or shorter (`by` > 0) envelopes for `ops`: every rate moves by `by`, but an instant
+ *  attack (R1 = 127) stays instant. In place. */
+export function shiftRates(voice: Voice, ops: readonly number[], by: number) {
+  for (const op of ops) {
+    for (let i = 0; i < 4; i++) {
+      const at = egOffset('rate', i)
+      if (i === 0 && voice.ops[op][at] === 127) continue
+      voice.ops[op][at] = clamp(voice.ops[op][at] + by)
+    }
+  }
+}

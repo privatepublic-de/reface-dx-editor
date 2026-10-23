@@ -194,7 +194,8 @@ test/           bulk/checksum, codec round trip, param tables, cc mapping, sende
 
 **Phase 5: linked envelopes. Built 2026-10-23 against the fake DX** (§7.1): `params/envelope.ts` (same-role operators, rates by delta, levels by ratio, from the drag's start), `setEgValue` in the store, a **Link carriers / Link modulators** toggle in every operator's EG heading, Alt/Option for one edit, the following knobs light up. EG graph drags now count from where the point was grabbed (no jump when grabbed off-centre). 161 tests.
 
-**Phase 6: style-based Init, Adjust and Randomize (planned 2026-10-23, decisions by Peter the same day).** See §7.2.
+**Phase 6: style-based Init, Adjust and Randomize. Built 2026-10-23, measured on the DX (docs/SOUND.md)** (§7.2): `style/` (choices, a seeded generator, the family templates as data tables, shapes per role, characters/brightness/treble/modifiers/effects, Init/Adjust/Randomize/Mutate and names), `applyVoice` in the store (one undo step, paced Parameter Changes; Init uses it too), **Init** (plain VOICE INIT, one click) beside **Style ▾**: a summary line, fixed chip grids (nothing moves while choosing; the family's own envelope and space outlined), Brightness, and More (length, evolving, expressive, treble, space, keep my effects); actions in two groups, *New voice in this style* (New voice, Another, Variation typical … wild, which replaced Randomize; family *Any*) and *Change this voice* (Towards style, which was Adjust, and Mutate). The choices are remembered in `reface-dx-editor.style`. Adjust blends towards a target: continuous values by the amount (at least one step), switches and ratios with that probability; the target stays until Roll again (its seed), each click draws anew. 175 tests: every family × shape and every character at the extremes gives a valid, audible voice named within 10 characters; same seed, same voice; Adjust 0 and Mutate 0 % change nothing and Adjust converges; keep my effects keeps both slots. On the DX (`tools/dxCurves.ts`, `tools/styleProbe.ts`): rate time halves per +10 and modulator depth is steep, so the shapes' rates and the level steps were retuned to the measured curves; the style probe checks 46/46 (brightness, characters, shapes, length). A comparison probe (`tools/styleCompare.ts`, docs/SOUND.md) then measured how different the options are against what another seed changes. The set was trimmed and retuned from it: FM noise as a tenth family, 4 characters (Classic FM into Expressive, Gritty into a Drive slider), 6 envelopes (Swell is brass's own, Atmo gone), brightness, evolving, expressive and treble rebuilt. Every family and shape pair now differs by more than a reroll; style probe 41/41. Saved choices naming removed options are cleaned on load.
+  Next: a listening session on the DX per family and shape, tuning the numbers in `style/templates.ts` and `style/shapes.ts`.
 
 **Later, not in this plan:** DX7 (6-op) voice import with a lossy 4-op conversion, Looper control (MIDI only exposes clock and tempo).
 
@@ -220,7 +221,7 @@ One drag changes the same envelope stage in several operators.
 
 ### 7.2 Styles: Init, Adjust, Randomize (Phase 6)
 
-**Init ▾** in the top bar becomes a popover: the style choices, then **Init**, **Adjust** and **Randomize**. Each action is one undo step, sent as Parameter Changes (paced batches), so sounding notes keep sounding.
+**Init ▾** in the top bar becomes a popover: the style choices, then **Init**, **Adjust** and **Randomize** (as built: Init beside **Style ▾**, see Phase 6). Each action is one undo step, sent as Parameter Changes (paced batches), so sounding notes keep sounding.
 
 **The choices, by axis:**
 

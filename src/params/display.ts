@@ -19,3 +19,16 @@ export const formatDetune = (raw: number) => (raw > 64 ? `+${raw - 64}` : String
 
 export const describeFrequency = (mode: number, coarse: number, fine: number) =>
   mode === 0 ? formatRatio(ratioOf(coarse, fine)) : `${formatHz(fixedHzOf(coarse, fine))} Hz`
+
+/** Coarse and fine for a ratio (0.5–31.99), the inverse of `ratioOf`, rounded to the nearest step. */
+export function ratioBytes(r: number): [coarse: number, fine: number] {
+  if (r < 1) return [0, Math.max(0, Math.min(99, Math.round((r - 0.5) / 0.005)))]
+  const coarse = Math.min(31, Math.floor(r))
+  return [coarse, Math.max(0, Math.min(99, Math.round((r - coarse) * 100)))]
+}
+
+/** Coarse and fine for a fixed frequency (1–9772 Hz): coarse picks the decade, fine the rest. */
+export function fixedBytes(hz: number): [coarse: number, fine: number] {
+  const decade = Math.max(0, Math.min(3, Math.floor(Math.log10(Math.max(1, hz)))))
+  return [decade * 8, Math.max(0, Math.min(99, Math.round(100 * Math.log10(hz / 10 ** decade))))]
+}

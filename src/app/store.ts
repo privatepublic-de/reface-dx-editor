@@ -111,6 +111,9 @@ export interface EditorState {
   redo(): void
   /** The DX's VOICE INIT sound (a sine), as one undo step: only what differs goes out, as Parameter Changes. */
   init(): void
+  /** Any whole new voice (a style's Init, Adjust, Randomize) the same way: one undo step, paced Parameter
+   *  Changes for what differs, no bulk (sounding notes keep sounding); the baseline stays. */
+  applyVoice(voice: Voice, label: string): void
   focusOperator(op: number): void
   noteOn(note: number, velocity: number): void
   noteOff(note: number): void
@@ -460,14 +463,18 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     init() {
+      get().applyVoice(initVoice(), 'Init voice')
+    },
+
+    applyVoice(next, label) {
       const voice = get().voice
-      if (!voice || !session) return
-      const changes = voiceChanges(voice, initVoice())
+      if (!voice || !session || useLibrary.getState().job) return
+      const changes = voiceChanges(voice, next)
       if (!changes.length) return
-      history.record(voice, 'init', 'Init voice')
+      history.record(voice, `apply:${label}`, label)
       history.endGesture()
       void session.sendBatch(changes)
-      set({ voice: initVoice() })
+      set({ voice: cloneVoice(next) })
       labels()
     },
 

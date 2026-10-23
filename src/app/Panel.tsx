@@ -228,9 +228,9 @@ function OperatorStrip({ op }: { op: number }) {
         </span>
         <S param={operatorParam('on')} address={opAt(op, 0x00)} toggle title="On" />
       </header>
-      <div className="op__freq" title="As the DX shows it">{describeFrequency(o[0x15], o[0x16], o[0x17])}</div>
-      <div className="group-box__controls">
+      <div className="op__freq-row">
         <S param={operatorParam('freqMode')} address={opAt(op, 0x15)} hideLabel />
+        <div className="op__freq" title="As the DX shows it">{describeFrequency(o[0x15], o[0x16], o[0x17])}</div>
       </div>
       <div className="group-box__controls">
         <P param={operatorParam('coarse')} address={opAt(op, 0x16)} />

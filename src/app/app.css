@@ -148,6 +148,9 @@ main { padding: 14px 16px 40px; }
 .op__head .switch--toggle { padding-top: 0; }
 .op__freq { padding: 4px 10px; background: var(--screen-lit); color: var(--screen-ink); border-radius: 3px; font: 500 22px var(--font-narrow);
   letter-spacing: .04em; font-variant-numeric: tabular-nums; text-align: right; text-shadow: 0 0 7px var(--screen-glow); }
+.op__freq-row { display: flex; align-items: center; gap: 8px; }
+.op__freq-row .op__freq { flex: 1; min-width: 0; }
+.op__freq-row .control, .op__freq-row .switch { padding: 0; }
 .op__section { border-top: 1px solid var(--panel-edge); padding-top: 6px; }
 
 /* ---- controls ---- */

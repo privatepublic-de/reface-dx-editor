@@ -30,6 +30,8 @@ export interface KnobProps {
   baseline?: number | null
   /** the readout instead of the param's own (Coarse shows the frequency) */
   display?: (value: number) => string
+  /** small glyphs (SVG paths in a 6 × 4 box) drawn at the arc's two ends: what the minimum and maximum mean */
+  ends?: [min: string, max: string]
   /** the DX's panel just changed it */
   flash?: boolean
   disabled?: boolean
@@ -38,7 +40,7 @@ export interface KnobProps {
   onGesture(active: boolean): void
 }
 
-export function Knob({ param: p, title, value, defaultValue, baseline = null, display, flash, disabled, small, onChange, onGesture }: KnobProps) {
+export function Knob({ param: p, title, value, defaultValue, baseline = null, display, ends, flash, disabled, small, onChange, onGesture }: KnobProps) {
   const ref = useRef<SVGSVGElement>(null)
   const drag = useRef<{ y: number; start: number } | null>(null)
   const [typing, setTyping] = useState(false)
@@ -131,6 +133,12 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
         <path d={arcPath(19, START, START + SWEEP)} className="knob__track" />
         <path d={arcPath(19, Math.min(from, at), Math.max(from, at))} className="knob__fill" />
         {moved && <KnobTick deg={angle(baseline!)} />}
+        {ends && (
+          <>
+            <path d={ends[0]} transform="translate(-4 41) scale(1.8)" className={`knob__end${value < (center ?? p.min) ? ' knob__end--on' : ''}`} />
+            <path d={ends[1]} transform="translate(41.2 41) scale(1.8)" className={`knob__end${value > (center ?? p.max) ? ' knob__end--on' : ''}`} />
+          </>
+        )}
         <circle cx="24" cy="24" r="13" className="knob__cap" />
         <line x1="24" y1="24" x2={pol(11, at)[0]} y2={pol(11, at)[1]} className="knob__pointer" />
       </svg>
@@ -179,10 +187,10 @@ function ValueInput({ param, value, onDone }: { param: Param; value: number; onD
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setText(e.target.value)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') finish(parseValue(param, text))
+        if (e.key === 'Enter') finish(parseValue(param, text, value))
         else if (e.key === 'Escape') finish(null)
       }}
-      onBlur={() => finish(parseValue(param, text))}
+      onBlur={() => finish(parseValue(param, text, value))}
     />
   )
 }

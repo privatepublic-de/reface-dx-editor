@@ -60,6 +60,7 @@ select { max-width: 14em; }
   letter-spacing: .06em; white-space: pre; min-width: 7.5em; text-shadow: 0 0 6px var(--screen-glow); }
 .edited { font: 600 12px var(--font-narrow); letter-spacing: .03em; color: var(--accent); border: 1px solid #eef3ff66; border-radius: 3px; padding: 0 5px; }
 .edited--hidden { visibility: hidden; }
+.voice-title__init { height: var(--ui-bar-ctl); }
 
 button.icon { display: inline-grid; place-items: center; width: 32px; height: var(--ui-bar-ctl); padding: 0; }
 .icon__svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -173,6 +174,9 @@ main { padding: 14px 16px 40px; }
 .knob__was { stroke: var(--ink-dim); stroke-width: 1.5; }
 .knob__cap { fill: #3b2d25; stroke: #0c0806; stroke-width: 1; }
 .knob__pointer { stroke: #f4f5f6; stroke-width: 2.5; stroke-linecap: round; }
+/* what a knob's ends mean (feedback: square at the left, saw at the right); the side the value is on lights up */
+.knob__end { fill: none; stroke: var(--ink-dim); stroke-width: .8; stroke-linejoin: round; }
+.knob__end--on { stroke: var(--accent); }
 
 .switch { align-items: flex-start; max-width: 100%; }
 .switch .control__label { text-align: left; }

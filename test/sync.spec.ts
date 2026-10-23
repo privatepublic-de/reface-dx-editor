@@ -154,3 +154,26 @@ describe('Session against the fake DX', () => {
     expect(sent.at(-1)).toEqual(Uint8Array.of(0x94, 60, 100))
   })
 })
+
+describe('Session.sendBatch', () => {
+  it('sends up to 32 at once and the rest in paced chunks, in order', async () => {
+    const fake = new FakeRefaceDx()
+    const session = new Session(fake)
+    await settle(session.connect())
+    const sent: Uint8Array[] = []
+    const send = fake.send.bind(fake)
+    fake.send = (m) => (sent.push(m), send(m))
+    // 70 different parameters: OP1–4 bytes 1–18
+    const changes = Array.from({ length: 70 }, (_, i) => [[0x31, i % 4, 1 + Math.floor(i / 4)], [i]] as [[number, number, number], number[]])
+    void session.sendBatch(changes)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(sent).toHaveLength(32)
+    await vi.advanceTimersByTimeAsync(9)
+    expect(sent).toHaveLength(32)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(sent).toHaveLength(64)
+    await vi.advanceTimersByTimeAsync(10)
+    expect(sent).toHaveLength(70)
+    for (const [a, d] of changes) expect(fake.edit.ops[a[1]][a[2]]).toBe(d[0])
+  })
+})

@@ -7,6 +7,7 @@ import { addressKey, addressLabel } from '../params/address'
 import { cloneVoice, diffVoices, locationName, setVoiceValues, voiceChanges, voiceName, voiceValueAt, type Voice } from '../sysex/codec'
 import type { Address } from '../sysex/messages'
 import { History } from '../sync/history'
+import { initVoice } from '../params/init'
 import { NOT_FOUND, Session } from '../sync/session'
 
 // ---- settings (localStorage) ----
@@ -88,6 +89,8 @@ export interface EditorState {
   endGesture(): void
   undo(): void
   redo(): void
+  /** The DX's VOICE INIT sound (a sine), as one undo step: only what differs goes out, as Parameter Changes. */
+  init(): void
   focusOperator(op: number): void
   noteOn(note: number, velocity: number): void
   noteOff(note: number): void
@@ -296,7 +299,7 @@ export const useEditor = create<EditorState>((set, get) => {
       const voice = get().voice
       const back = voice && history.undo(voice)
       if (!voice || !back || !session) return
-      for (const [a, d] of voiceChanges(voice, back)) session.sendValue(a, d)
+      void session.sendBatch(voiceChanges(voice, back))
       set({ voice: back })
       labels()
     },
@@ -305,8 +308,20 @@ export const useEditor = create<EditorState>((set, get) => {
       const voice = get().voice
       const fwd = voice && history.redo(voice)
       if (!voice || !fwd || !session) return
-      for (const [a, d] of voiceChanges(voice, fwd)) session.sendValue(a, d)
+      void session.sendBatch(voiceChanges(voice, fwd))
       set({ voice: fwd })
+      labels()
+    },
+
+    init() {
+      const voice = get().voice
+      if (!voice || !session) return
+      const changes = voiceChanges(voice, initVoice())
+      if (!changes.length) return
+      history.record(voice, 'init', 'Init voice')
+      history.endGesture()
+      void session.sendBatch(changes)
+      set({ voice: initVoice() })
       labels()
     },
 

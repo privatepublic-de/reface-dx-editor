@@ -13,8 +13,8 @@ export interface Param {
   labels?: readonly string[]
   /** How the DX shows it, when neither `center` nor `labels` says. */
   format?: (raw: number) => string
-  /** Reads a typed value back, when `format` shows more than a number. */
-  parse?: (text: string) => number | null
+  /** Reads a typed value back, when `format` shows more (or less) than the number; gets the value before. */
+  parse?: (text: string, current: number) => number | null
 }
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n))
@@ -29,10 +29,10 @@ export function formatValue(p: Param, raw: number): string {
 export const OFF_ON = ['off', 'on'] as const
 
 /** A typed value back to the raw byte, in the units `formatValue` shows; null if it doesn't read. */
-export function parseValue(p: Param, text: string): number | null {
+export function parseValue(p: Param, text: string, current = p.min): number | null {
   const t = text.trim().replace('−', '-')
   if (p.parse) {
-    const v = p.parse(t)
+    const v = p.parse(t, current)
     return v === null ? null : Math.max(p.min, Math.min(p.max, v))
   }
   if (p.labels) {

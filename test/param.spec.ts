@@ -22,9 +22,10 @@ describe('typing a value', () => {
 })
 
 describe('a param with its own parser', () => {
-  it('reads "64 sq" as square (negative), like the Feedback knob shows it', () => {
-    const fb = { offset: 0, key: 'fb', label: 'Feedback', min: -127, max: 127, center: 0, parse: (t: string) => (/sq/.test(t) ? -1 : 1) * Math.abs(Number.parseFloat(t)) }
-    expect(parseValue(fb, '64 sq')).toBe(-64)
-    expect(parseValue(fb, '200 saw')).toBe(127)
+  it('reads "64 sq" as square (negative), and a plain number keeps the side it had', () => {
+    const fb = { offset: 0, key: 'fb', label: 'Feedback', min: -127, max: 127, center: 0, parse: (t: string, current: number) => (/sq/.test(t) || (!/saw/.test(t) && current < 0) ? -1 : 1) * Math.abs(Number.parseFloat(t)) }
+    expect(parseValue(fb, '64 sq', 10)).toBe(-64)
+    expect(parseValue(fb, '200 saw', -10)).toBe(127)
+    expect(parseValue(fb, '30', -70)).toBe(-30)
   })
 })

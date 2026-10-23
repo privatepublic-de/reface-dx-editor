@@ -15,6 +15,10 @@ import { Requests, type AskOptions } from './requests'
 
 /** FREQ arrives as mode + coarse + fine CCs within ~2 ms (Q5): CCs this close together are one panel change. */
 export const CC_GATHER_MS = 8
+/** The DX took 32 Parameter Changes back to back (Q7); bigger batches (Init, a far undo) go out in chunks this
+ *  size, BATCH_PAUSE_MS apart. Nobody has tried more at once. */
+export const BATCH_SIZE = 32
+export const BATCH_PAUSE_MS = 10
 
 export interface SessionEvents {
   /** The DX selected location 0–31 on its panel; the session reads the voice next. */
@@ -41,6 +45,7 @@ export class Session {
   private gathered: [Address, number][] = []
   private gatherTimer: ReturnType<typeof setTimeout> | null = null
   private closed = false
+  private batches: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly transport: MidiTransport,
@@ -94,6 +99,19 @@ export class Session {
   /** An edit: goes out as a Parameter Change (coalesced per parameter). */
   sendValue(address: Address, data: number[]) {
     this.sender.push(address, data)
+  }
+
+  /** Many changes at once (Init, undo across many values), as Parameter Changes: up to BATCH_SIZE at once, more in
+   *  paced chunks. Batches go out in order, so an undo right after an Init can't overtake it. */
+  sendBatch(changes: [Address, number[]][]): Promise<void> {
+    const run = async () => {
+      for (let i = 0; i < changes.length && !this.closed; i += BATCH_SIZE) {
+        if (i) await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS))
+        for (const [a, d] of changes.slice(i, i + BATCH_SIZE)) this.sender.push(a, d)
+      }
+    }
+    this.batches = this.batches.then(run, run)
+    return this.batches
   }
 
   /** A whole voice into the DX's edit buffer (7 blocks). Cuts sounding notes; never stores (Q2). */

@@ -85,7 +85,7 @@ function ConnectionBar() {
 
 /** Where the voice is stored (once known), its name, and "Edited" when it differs from what the DX had. */
 function VoiceTitle() {
-  const { voice, baseline, program, reading, selectProgram } = useEditor()
+  const { voice, baseline, program, reading, selectProgram, init } = useEditor()
   const edited = useMemo(() => !!voice && !!baseline && diffVoices(baseline, voice).length > 0, [voice, baseline])
   return (
     <div className="voice-title">
@@ -100,6 +100,10 @@ function VoiceTitle() {
       </label>
       <span className="voice-title__name">{voice ? voiceName(voice) || '(no name)' : '…'}</span>
       <span className={edited ? 'edited' : 'edited edited--hidden'} aria-hidden={!edited}>Edited</span>
+      <button className="voice-title__init" onClick={init} disabled={reading}
+        title="Start over from the DX’s VOICE INIT sound (a sine on OP1). Nothing is stored; Undo brings your voice back.">
+        Init
+      </button>
     </div>
   )
 }

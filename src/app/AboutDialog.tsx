@@ -39,6 +39,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <li>Every change goes to the DX at once, into the voice it is playing. Nothing is stored until you press STORE on the DX.</li>
         <li>The location menu next to the name selects a stored voice on the DX. Choosing a voice on the DX itself is followed here.</li>
         <li><b>Edited</b> means the voice differs from what was last read from the DX.</li>
+        <li><b>Init</b> starts over from the DX’s VOICE INIT sound (a sine on OP1), as one undo step.</li>
       </ul>
 
       <h3>How it was made</h3>

@@ -184,16 +184,22 @@ function Effect({ n, at }: { n: 1 | 2; at: number }) {
   )
 }
 
+/** The feedback knob's ends, as on the DX's FB screen: square down (left), saw up (right). In a 6 × 4 box. */
+const SQUARE_GLYPH = 'M0 4V0.5H3V4H6V0.5'
+const SAW_GLYPH = 'M0 4L3 0.5V4L6 0.5V4'
+
 /** Feedback as the DX's FB slider has it: up from the centre saw, down square, 0 = none. */
 const FEEDBACK: Param = {
   offset: 0x13, key: 'feedback', label: 'Feedback', min: -127, max: 127, center: 0,
-  format: (v) => (v === 0 ? '0' : `${Math.abs(v)} ${v > 0 ? 'saw' : 'sq'}`),
-  // "64 sq" and "-64" are square, "64" and "64 saw" saw
-  parse: (t) => {
-    const m = /^\s*([-−]?\d+)\s*(sq|square|saw)?/i.exec(t)
+  // The level alone: the lit glyph at the knob's end says square or saw.
+  format: (v) => String(Math.abs(v)),
+  // A plain number keeps the wave it had; "-64" or "64 sq" is square, "+64" or "64 saw" saw.
+  parse: (t, current) => {
+    const m = /^\s*([-−+]?)(\d+)\s*(sq|square|saw)?/i.exec(t)
     if (!m) return null
-    const n = Number(m[1].replace('−', '-'))
-    return m[2] ? (m[2].toLowerCase() === 'saw' ? 1 : -1) * Math.abs(n) : n
+    const n = Number(m[2])
+    const square = m[3] ? m[3].toLowerCase() !== 'saw' : m[1] ? m[1] !== '+' : current < 0
+    return square ? -n : n
   },
 }
 
@@ -232,7 +238,7 @@ function OperatorStrip({ op }: { op: number }) {
       </div>
       <div className="group-box__controls">
         <P param={operatorParam('level')} address={opAt(op, 0x12)} title={carrier ? 'Volume' : 'Mod depth'} />
-        <Knob param={FEEDBACK} value={fb} defaultValue={0} flash={flashFb} onGesture={gesture}
+        <Knob param={FEEDBACK} value={fb} defaultValue={0} flash={flashFb} onGesture={gesture} ends={[SQUARE_GLYPH, SAW_GLYPH]}
           onChange={(v) => setValues([[opAt(op, 0x13), [Math.abs(v)]], ...(v === 0 ? [] : [[opAt(op, 0x14), [v < 0 ? 1 : 0]] as [Address, number[]]])], `OP${op + 1} Feedback`)} />
         <P param={operatorParam('velocity')} address={opAt(op, 0x11)} title="Velocity" />
       </div>

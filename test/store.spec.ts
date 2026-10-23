@@ -106,3 +106,22 @@ describe('resync', () => {
     expect(s().undoLabel).toBe('OP1 Output level')
   })
 })
+
+describe('init', () => {
+  it('turns the voice into VOICE INIT as one undo step, without a bulk, and undo brings it back', async () => {
+    await demo()
+    const { initVoice } = await import('../src/params/init')
+    const sent: Uint8Array[] = []
+    const fake = s().fake!
+    const send = fake.send.bind(fake)
+    fake.send = (m) => (sent.push(m), send(m))
+    s().init()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(fake.edit).toEqual(initVoice())
+    expect(s().undoLabel).toBe('Init voice')
+    expect(sent.every((m) => m[2] >> 4 === 1)).toBe(true) // Parameter Changes only (43 1n …)
+    s().undo()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(fake.edit).toEqual(DEMO_VOICES[0])
+  })
+})

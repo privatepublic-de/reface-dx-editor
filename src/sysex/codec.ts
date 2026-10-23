@@ -3,7 +3,7 @@ import { COMMON_PARAMS, NAME_LENGTH } from '../params/common'
 import { describeFrequency } from '../params/display'
 import { OPERATOR_PARAMS } from '../params/operator'
 import { formatValue } from '../params/param'
-import { ADDRESS, bulkBlock, parseSysex, sameAddress, SIZE, splitSysex, type DxSysex } from './messages'
+import { ADDRESS, bulkBlock, parseSysex, sameAddress, SIZE, splitSysex, type Address, type DxSysex } from './messages'
 
 export interface Voice {
   common: Uint8Array
@@ -128,3 +128,38 @@ export function diffVoices(a: Voice, b: Voice): string[] {
 
 /** Program Change number 0–31 as the DX shows it: Bank 1-1 … 4-8. */
 export const locationName = (program: number) => `${Math.floor(program / 8) + 1}-${(program % 8) + 1}`
+
+// ---- single parameters (what a Parameter Change or Parameter Request addresses) ----
+
+/** The block an address points into (Common or an operator), or null for SYSTEM and anything else. */
+function blockAt(v: Voice, a: Address): Uint8Array | null {
+  if (a[0] === 0x30 && a[1] === 0x00) return v.common
+  if (a[0] === 0x31 && a[1] < 4) return v.ops[a[1]]
+  return null
+}
+
+export const voiceValueAt = (v: Voice, a: Address): number | undefined => {
+  const block = blockAt(v, a)
+  return block && a[2] < block.length ? block[a[2]] : undefined
+}
+
+/** Writes `data` from the address on (several bytes for the name); false if the address isn't in a voice. */
+export function setVoiceValues(v: Voice, a: Address, data: ArrayLike<number>): boolean {
+  const block = blockAt(v, a)
+  if (!block || a[2] + data.length > block.length) return false
+  for (let i = 0; i < data.length; i++) block[a[2] + i] = data[i] & 0x7f
+  return true
+}
+
+/** Values outside their documented range, and name characters outside ASCII 32–126: what an import flags. */
+export function voiceProblems(v: Voice): string[] {
+  const out: string[] = []
+  for (let i = 0; i < NAME_LENGTH; i++) {
+    if (v.common[i] < 0x20 || v.common[i] > 0x7e) out.push(`Name char ${i + 1}: ${v.common[i]}`)
+  }
+  for (const p of COMMON_PARAMS) if (v.common[p.offset] < p.min || v.common[p.offset] > p.max) out.push(`${p.label}: ${v.common[p.offset]}`)
+  v.ops.forEach((op, n) => {
+    for (const p of OPERATOR_PARAMS) if (op[p.offset] < p.min || op[p.offset] > p.max) out.push(`OP${n + 1} ${p.label}: ${op[p.offset]}`)
+  })
+  return out
+}

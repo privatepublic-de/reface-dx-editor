@@ -1,17 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { cloneVoice, diffVoices, locationName, setVoiceName, VOICE_BYTES, voiceName, voicesFromBytes, voiceToBytes, voiceToMessages, type Voice } from '../src/sysex/codec'
+import { initVoice } from '../src/params/init'
+import {
+  cloneVoice, diffVoices, locationName, setVoiceName, setVoiceValues, VOICE_BYTES, voiceName, voiceProblems, voicesFromBytes, voiceToBytes, voiceToMessages,
+  voiceValueAt, type Voice,
+} from '../src/sysex/codec'
 import { parseSysex } from '../src/sysex/messages'
-
-/** Roughly the DX's VOICE INIT: OP1 a sine carrier, the others silent. */
-function initVoice(): Voice {
-  const common = new Uint8Array(38)
-  setVoiceName({ common, ops: [] as unknown as Voice['ops'] }, 'Init Voice')
-  common.set([0x40, 0, 0, 0x42, 0], 0x0c)
-  common.set([0x40, 0x40, 0x40, 0x40], 0x19)
-  const op = (level: number) => Uint8Array.from([1, 127, 127, 127, 127, 127, 127, 127, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, level, 0, 0, 0, 1, 0, 64, 0, 0, 0])
-  return { common, ops: [op(127), op(0), op(0), op(0)] }
-}
 
 describe('voice codec', () => {
   it('sends a voice as 7 blocks, 241 bytes', () => {
@@ -67,5 +61,27 @@ describe.skipIf(!existsSync(LOCAL_DUMP))('local 32-voice dump', () => {
     expect(voices).toHaveLength(32)
     const again = new Uint8Array(voices.flatMap((v) => [...voiceToBytes(0, v)]))
     expect(again).toEqual(new Uint8Array(bytes))
+  })
+})
+
+describe('single parameters and validation', () => {
+  it('reads and writes by Parameter Change address, the name as several bytes', () => {
+    const v = initVoice()
+    expect(setVoiceValues(v, [0x31, 2, 0x12], [77])).toBe(true)
+    expect(voiceValueAt(v, [0x31, 2, 0x12])).toBe(77)
+    expect(setVoiceValues(v, [0x30, 0, 0], Array.from('Hello', (c) => c.charCodeAt(0)))).toBe(true)
+    expect(voiceName(v)).toBe('HelloVoice')
+    expect(setVoiceValues(v, [0x31, 4, 0], [1])).toBe(false)
+    expect(setVoiceValues(v, [0x31, 0, 27], [1, 2])).toBe(false)
+    expect(voiceValueAt(v, [0x00, 0x00, 0x0e])).toBeUndefined()
+  })
+
+  it('flags out-of-range values and odd name characters', () => {
+    const v = initVoice()
+    expect(voiceProblems(v)).toEqual([])
+    v.common[0x10] = 12
+    v.common[3] = 0x7f
+    v.ops[1][0x17] = 100
+    expect(voiceProblems(v)).toEqual(['Name char 4: 127', 'Algorithm: 12', 'OP2 Fine: 100'])
   })
 })

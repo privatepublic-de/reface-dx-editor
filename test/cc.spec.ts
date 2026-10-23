@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALGORITHM_CC_VALUES, algorithmFromCc, ccLabel, FM_CCS } from '../src/params/cc'
+import { ALGORITHM_CC_VALUES, algorithmFromCc, ccLabel, ccToParameter, ccValueFor, FM_CCS } from '../src/params/cc'
 
 describe('FM section CCs', () => {
   it('covers the 25 documented numbers', () => {
@@ -15,5 +15,15 @@ describe('FM section CCs', () => {
     expect(ccLabel(104, 127)).toBe('OP2 feedback type → square')
     expect(ccLabel(80, 35)).toBe('Algorithm → 4')
     expect(ccLabel(64, 0)).toBe('sustain')
+  })
+})
+
+describe('FM CCs to parameters', () => {
+  it('maps received values as the Data List recognizes them', () => {
+    expect(ccToParameter(80, 22)).toEqual({ address: [0x30, 0, 0x10], value: 2 })
+    expect(ccToParameter(117, 63)).toEqual({ address: [0x31, 3, 0x15], value: 0 })
+    expect(ccToParameter(89, 127)).toEqual({ address: [0x31, 0, 0x16], value: 31 })
+    expect(ccToParameter(7, 100)).toBeNull()
+    expect([ccValueFor('algorithm', 11), ccValueFor('feedbackType', 1), ccValueFor('fine', 42)]).toEqual([127, 127, 42])
   })
 })

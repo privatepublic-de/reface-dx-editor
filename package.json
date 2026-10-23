@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "test": "vitest run",
     "typecheck": "tsc",
-    "list-voices": "vite-node tools/listVoices.ts --"
+    "list-voices": "vite-node tools/listVoices.ts --",
+    "export-demo": "vite-node tools/exportDemoVoices.ts --"
   },
   "author": "Peter Witzel",
   "license": "MIT",

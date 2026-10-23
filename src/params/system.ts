@@ -28,3 +28,30 @@ export function formatSystem(data: ArrayLike<number>): string {
   parts.push(`Tempo ${tempoBpm(data)} BPM`)
   return parts.join(' · ')
 }
+
+/** The 4 Master Tune nybbles for −102.4…+102.3 cents (0.1-cent steps). */
+export function masterTuneBytes(cents: number): number[] {
+  const v = Math.max(0, Math.min(2047, Math.round(cents * 10) + 1024))
+  return [(v >> 12) & 0x0f, (v >> 8) & 0x0f, (v >> 4) & 0x0f, v & 0x0f]
+}
+
+/** The 2 Tempo bytes for 30–300 BPM. */
+export function tempoBytes(bpm: number): number[] {
+  const v = Math.max(30, Math.min(300, Math.round(bpm)))
+  return [(v >> 7) & 0x7f, v & 0x7f]
+}
+
+/** A SYSTEM block as the test DX had it (FINDINGS setup, 2026-10-23), with TR/RV CH set. */
+export function defaultSystem(txChannel = 15, rxChannel = 15): Uint8Array {
+  const s = new Uint8Array(32)
+  s[0x00] = txChannel
+  s[0x01] = rxChannel
+  s.set(masterTuneBytes(0), 0x02)
+  s[0x06] = 1
+  s[0x07] = 0x40
+  s.set(tempoBytes(120), 0x08)
+  s[0x0a] = 37
+  s[0x0b] = 1
+  s[0x0e] = 1
+  return s
+}

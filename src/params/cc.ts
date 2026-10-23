@@ -40,3 +40,31 @@ export function ccLabel(cc: number, value: number): string {
   if (fm.key === 'freqMode') return `${fm.label} → ${value < 64 ? 'ratio' : 'fixed'}`
   return fm.label
 }
+
+/** Operator byte offsets of the FM-section keys. */
+const OP_OFFSET = { level: 0x12, feedback: 0x13, feedbackType: 0x14, freqMode: 0x15, coarse: 0x16, fine: 0x17 } as const
+
+/** The Parameter Change address an FM-section control edits. */
+export const fmAddress = (key: FmCc['key'], op?: number): [number, number, number] =>
+  key === 'algorithm' ? [0x30, 0x00, 0x10] : [0x31, op!, OP_OFFSET[key]]
+
+const OP_MAX = { level: 127, feedback: 127, feedbackType: 1, freqMode: 1, coarse: 31, fine: 99 } as const
+
+/** What a received FM CC changes, as the Data List's "recognized" column reads (documented, not probed:
+ *  Q5 only checked what the DX sends). Address as for a Parameter Change. */
+export function ccToParameter(cc: number, value: number): { address: [number, number, number]; value: number } | null {
+  const fm = FM_CCS.find((c) => c.cc === cc)
+  if (!fm) return null
+  if (fm.key === 'algorithm') return { address: fmAddress('algorithm'), value: algorithmFromCc(value) }
+  const raw = fm.key === 'feedbackType' || fm.key === 'freqMode' ? (value < 64 ? 0 : 1) : Math.min(value, OP_MAX[fm.key])
+  return { address: fmAddress(fm.key, fm.op), value: raw }
+}
+
+/** The CC value the DX sends for a raw parameter value (FINDINGS Q5: algorithms as ALGORITHM_CC_VALUES, switches 0/127). */
+export function ccValueFor(key: FmCc['key'], raw: number): number {
+  if (key === 'algorithm') return ALGORITHM_CC_VALUES[raw]
+  if (key === 'feedbackType' || key === 'freqMode') return raw ? 127 : 0
+  return raw
+}
+
+export const ccFor = (key: FmCc['key'], op?: number) => FM_CCS.find((c) => c.key === key && c.op === op)!.cc

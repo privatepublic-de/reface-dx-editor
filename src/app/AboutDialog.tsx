@@ -43,6 +43,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <li>The location menu next to the name selects a stored voice on the DX. Choosing a voice on the DX itself is followed here.</li>
         <li><b>Edited</b> means the voice differs from what was last read from the DX.</li>
         <li><b>Init</b> starts over from the DX’s VOICE INIT sound (a sine on OP1), as one undo step.</li>
+        <li><b>Link</b> (in an operator’s EG) makes an envelope edit carry over to the other operators with the same role: carriers with carriers, modulators with modulators. Rates move by the same amount, levels by the same ratio. Hold Alt/Option to link one edit.</li>
       </ul>
 
       <h3>Store and Library</h3>

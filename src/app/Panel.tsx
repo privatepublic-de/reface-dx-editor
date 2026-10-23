@@ -22,15 +22,16 @@ const INIT = initVoice()
 const common = (offset: number): Address => [0x30, 0x00, offset]
 const opAt = (op: number, offset: number): Address => [0x31, op, offset]
 
-/** A knob for the param at `address`, wired to the store: value, baseline tick, panel highlight, undo gestures. */
-function P({ param, address, title, display, small }: { param: Param; address: Address; title?: string; display?: (v: number) => string; small?: boolean }) {
+/** A knob for the param at `address`, wired to the store: value, baseline tick, panel highlight, undo gestures.
+ *  `onSet` replaces the plain edit (the envelope knobs go through the link). */
+function P({ param, address, title, display, small, onSet }: { param: Param; address: Address; title?: string; display?: (v: number) => string; small?: boolean; onSet?(v: number): void }) {
   const value = useEditor((s) => valueAt(s.voice, address))
   const baseline = useEditor((s) => valueAt(s.baseline, address))
   const flash = useEditor((s) => s.touched.includes(addressKey(address)))
   const { setValue, beginGesture, endGesture } = useEditor.getState()
   return (
     <Knob param={param} title={title} value={value} baseline={baseline} defaultValue={valueAt(INIT, address)} display={display} flash={flash} small={small}
-      onChange={(v) => setValue(address, v)} onGesture={(on) => (on ? beginGesture() : endGesture())} />
+      onChange={(v) => (onSet ? onSet(v) : setValue(address, v))} onGesture={(on) => (on ? beginGesture() : endGesture())} />
   )
 }
 
@@ -206,7 +207,7 @@ const FEEDBACK: Param = {
 function OperatorStrip({ op }: { op: number }) {
   const voice = useEditor((s) => s.voice)!
   const focused = useEditor((s) => s.focusOp === op)
-  const { setValues, setValue, beginGesture, endGesture, focusOperator } = useEditor.getState()
+  const { setValues, setEgValue, beginGesture, endGesture, focusOperator } = useEditor.getState()
   const o = voice.ops[op]
   const algorithm = voice.common[0x10]
   const carrier = isCarrier(algorithm, op)
@@ -243,14 +244,16 @@ function OperatorStrip({ op }: { op: number }) {
         <P param={operatorParam('velocity')} address={opAt(op, 0x11)} title="Velocity" />
       </div>
       <div className="op__section">
-        <h3>EG</h3>
-        <EgGraph label={`OP${op + 1} EG`} rates={rates} levels={levels} ghosts={ghosts}
-          onChange={(kind, i, v) => setValue(opAt(op, (kind === 'rate' ? 0x01 : 0x05) + i), v)} onGesture={gesture} />
+        <h3 className="op__eg-head">
+          EG
+          <LinkToggle carrier={carrier} />
+        </h3>
+        <EgGraph label={`OP${op + 1} EG`} rates={rates} levels={levels} ghosts={ghosts} onChange={(kind, i, v) => setEgValue(op, kind, i, v)} onGesture={gesture} />
         <div className="group-box__controls group-box__controls--eg">
-          {[1, 2, 3, 4].map((n) => <P key={n} param={operatorParam(`egRate${n}`)} address={opAt(op, n)} title={`R${n}`} small />)}
+          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egRate${i + 1}`)} address={opAt(op, 1 + i)} title={`R${i + 1}`} small onSet={(v) => setEgValue(op, 'rate', i, v)} />)}
         </div>
         <div className="group-box__controls group-box__controls--eg">
-          {[1, 2, 3, 4].map((n) => <P key={n} param={operatorParam(`egLevel${n}`)} address={opAt(op, 4 + n)} title={`L${n}`} small />)}
+          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egLevel${i + 1}`)} address={opAt(op, 5 + i)} title={`L${i + 1}`} small onSet={(v) => setEgValue(op, 'level', i, v)} />)}
         </div>
       </div>
       <div className="op__section">
@@ -266,6 +269,21 @@ function OperatorStrip({ op }: { op: number }) {
         <KscSection op={op} />
       </div>
     </section>
+  )
+}
+
+/** Link (PLAN §7.1): an envelope edit carries over to the other operators with the same role. Alt/Option links one edit. */
+function LinkToggle({ carrier }: { carrier: boolean }) {
+  const linkEgs = useEditor((s) => s.linkEgs)
+  const alt = useEditor((s) => s.altHeld)
+  const setLinkEgs = useEditor((s) => s.setLinkEgs)
+  const on = linkEgs || alt
+  return (
+    <button type="button" className={`link-toggle${on ? ' on' : ''}`} aria-pressed={linkEgs} onClick={() => setLinkEgs(!linkEgs)}
+      title={`Link envelopes: a change here carries over to the other ${carrier ? 'carriers' : 'modulators'} (rates by the same amount, levels by the same ratio). Hold Alt/Option to link one edit.`}>
+      <span className="led" aria-hidden />
+      Link {carrier ? 'carriers' : 'modulators'}
+    </button>
   )
 }
 

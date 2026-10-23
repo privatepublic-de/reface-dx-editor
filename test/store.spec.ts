@@ -259,3 +259,42 @@ describe('DX settings', () => {
     expect(sent.at(-1)).toEqual(Uint8Array.of(0x93, 60, 90))
   })
 })
+
+describe('linked envelopes', () => {
+  /** Demo voice 1 is algorithm 8: carriers OP1 and OP3, modulators OP2 and OP4. */
+  const l2 = (op: number) => s().voice!.ops[op][0x06]
+  const dxL2 = (op: number) => s().fake!.edit.ops[op][0x06]
+
+  afterEach(() => useEditor.setState({ linkEgs: false, altHeld: false }))
+
+  it('carries a drag over to the same-role operators, from the start of the drag, as one undo step', async () => {
+    await demo()
+    const start = [0, 1, 2, 3].map(l2) // 90, 55, 80, 0
+    s().setLinkEgs(true)
+    s().beginGesture()
+    s().setEgValue(0, 'level', 1, 45) // OP1 L2 halved
+    s().setEgValue(0, 'level', 1, 127) // OP3 clamps at 127
+    s().setEgValue(0, 'level', 1, 90) // back: OP3 exactly as it was
+    s().setEgValue(0, 'level', 1, 45)
+    s().endGesture()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(l2(0)).toBe(45)
+    expect(l2(2)).toBe(Math.round(start[2] / 2))
+    expect([l2(1), l2(3)]).toEqual([start[1], start[3]]) // modulators untouched
+    expect(dxL2(2)).toBe(l2(2))
+    expect(s().undoLabel).toBe('OP1 EG level 2, linked')
+    s().undo()
+    expect([0, 1, 2, 3].map(l2)).toEqual(start)
+  })
+
+  it('links one edit with Alt held, and nothing without', async () => {
+    await demo()
+    const op3 = l2(2)
+    s().setEgValue(0, 'rate', 1, 20)
+    expect(s().voice!.ops[2][0x02]).toBe(DEMO_VOICES[0].ops[2][0x02])
+    s().setAltHeld(true)
+    s().setEgValue(0, 'rate', 1, 30) // +10 from the current value (no drag)
+    expect(s().voice!.ops[2][0x02]).toBe(DEMO_VOICES[0].ops[2][0x02] + 10)
+    expect(l2(2)).toBe(op3)
+  })
+})

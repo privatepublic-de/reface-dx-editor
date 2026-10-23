@@ -22,6 +22,7 @@ const STATUS_TEXT: Record<Status, string> = {
 
 export function App() {
   useUndoKeys()
+  useAltKey()
   useResyncOnFocus()
   return (
     <>
@@ -49,6 +50,26 @@ function useUndoKeys() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+}
+
+/** Alt/Option held links envelope edits for the moment (PLAN §7.1). Pointer events say it too, in case a key event went elsewhere. */
+function useAltKey() {
+  useEffect(() => {
+    const set = (held: boolean) => useEditor.getState().setAltHeld(held)
+    const onKey = (e: KeyboardEvent) => set(e.altKey)
+    const onPointer = (e: PointerEvent) => set(e.altKey)
+    const off = () => set(false)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKey)
+    window.addEventListener('pointerdown', onPointer, true)
+    window.addEventListener('blur', off)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKey)
+      window.removeEventListener('pointerdown', onPointer, true)
+      window.removeEventListener('blur', off)
+    }
   }, [])
 }
 

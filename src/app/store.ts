@@ -8,6 +8,7 @@ import { cloneVoice, diffVoices, locationName, setVoiceValues, voiceChanges, voi
 import type { Address } from '../sysex/messages'
 import { History } from '../sync/history'
 import { initVoice } from '../params/init'
+import { egOffset, linkedEgChanges, type EgKind } from '../params/envelope'
 import { DEMO_LIBRARY_KEY, LIBRARY_KEY, useLibrary } from './libraryStore'
 import { NOT_FOUND, Session } from '../sync/session'
 
@@ -63,6 +64,10 @@ export interface EditorState {
   replaced: Voice | null
   /** the operator the panel focuses (EG graph, algorithm highlight), 0–3 */
   focusOp: number
+  /** Link: an envelope edit carries over to the other operators with the same role (PLAN §7.1) */
+  linkEgs: boolean
+  /** Alt/Option is held: links envelopes for this edit */
+  altHeld: boolean
   /** keys held on the DX, with their velocity */
   synthNotes: Map<number, number>
   /** the velocity of the last note played, here or on the DX */
@@ -92,6 +97,10 @@ export interface EditorState {
   /** An edit from the editor: goes to the DX as Parameter Changes, as one undo step called `label`. */
   setValues(changes: Change[], label: string, key?: string): void
   setValue(address: Address, value: number): void
+  /** An operator envelope stage; linked (the toggle or Alt) it carries over to the same-role operators. */
+  setEgValue(op: number, kind: EgKind, stage: number, value: number): void
+  setLinkEgs(on: boolean): void
+  setAltHeld(held: boolean): void
   /** A SYSTEM setting on the DX, live; several bytes for Master Tune and Tempo. Not part of undo. */
   setSystemValue(offset: number, value: number | number[]): void
   /** Reads SYSTEM again (the settings may have been changed on the DX). */
@@ -116,6 +125,8 @@ let session: Session | null = null
 let transport: MidiTransport | null = null
 const history = new History()
 let touchTimer: ReturnType<typeof setTimeout> | null = null
+/** the voice when the current gesture (a drag) began: what linked envelope edits are computed from */
+let gestureStart: Voice | null = null
 /** a Stop for Read all */
 let stopRequested = false
 /** notes the editor holds down, so none hangs */
@@ -205,6 +216,8 @@ export const useEditor = create<EditorState>((set, get) => {
     redoLabel: null,
     replaced: null,
     focusOp: 0,
+    linkEgs: false,
+    altHeld: false,
     synthNotes: new Map(),
     lastVelocity: null,
     modWheel: 0,
@@ -401,8 +414,32 @@ export const useEditor = create<EditorState>((set, get) => {
       if (system) set({ system: Uint8Array.from(system) })
     },
 
-    beginGesture: () => history.beginGesture(),
-    endGesture: () => history.endGesture(),
+    beginGesture() {
+      history.beginGesture()
+      gestureStart ??= get().voice && cloneVoice(get().voice!)
+    },
+    endGesture() {
+      history.endGesture()
+      gestureStart = null
+    },
+
+    setEgValue(op, kind, stage, value) {
+      const voice = get().voice
+      if (!voice) return
+      const at = egOffset(kind, stage)
+      const own: Change = [[0x31, op, at], [value]]
+      const name = `OP${op + 1} EG ${kind} ${stage + 1}`
+      if (!(get().linkEgs || get().altHeld)) return get().setValues([own], name, addressKey(own[0]))
+      // Linked: everything from the voice as the drag began (or as it is, for a wheel or key step).
+      const linked = linkedEgChanges(gestureStart ?? voice, op, kind, stage, value)
+      get().setValues([own, ...linked], `${name}, linked`, `linked:${addressKey(own[0])}`)
+      set({ touched: linked.map(([a]) => addressKey(a)) })
+      if (touchTimer) clearTimeout(touchTimer)
+      touchTimer = setTimeout(() => set({ touched: [] }), 400)
+    },
+
+    setLinkEgs: (on) => set({ linkEgs: on }),
+    setAltHeld: (held) => get().altHeld !== held && set({ altHeld: held }),
 
     undo() {
       const voice = get().voice

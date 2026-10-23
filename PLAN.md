@@ -192,4 +192,75 @@ test/           bulk/checksum, codec round trip, param tables, cc mapping, sende
 
 **Phase 4: polish and release. Done 2026-10-23 except publishing (the repository isn't on GitHub yet).** **DX settings** dialog (⚙ in the top bar): every SYSTEM value live (RV/TR CH, MIDI Control, Local, Master tune in Hz as the DX shows it, Master transpose, Tempo, Sustain pedal, Speakers, Auto power-off, LCD contrast), read again on opening. README with a screenshot of the demo, Help/About with the Controls text and a Privacy link, `public/privacy.html` (a test checks it names every storage key), an error boundary that offers the voice as a .syx before reloading, MIT LICENSE, `start/` launchers, `.github/workflows/pages.yml`. 153 tests.
 
-**Later, not in this plan:** randomize/mutate voices, DX7 (6-op) voice import with a lossy 4-op conversion, Looper control (MIDI only exposes clock and tempo).
+**Phase 5: linked envelopes. Built 2026-10-23 against the fake DX** (§7.1): `params/envelope.ts` (same-role operators, rates by delta, levels by ratio, from the drag's start), `setEgValue` in the store, a **Link carriers / Link modulators** toggle in every operator's EG heading, Alt/Option for one edit, the following knobs light up. EG graph drags now count from where the point was grabbed (no jump when grabbed off-centre). 161 tests.
+
+**Phase 6: style-based Init, Adjust and Randomize (planned 2026-10-23, decisions by Peter the same day).** See §7.2.
+
+**Later, not in this plan:** DX7 (6-op) voice import with a lossy 4-op conversion, Looper control (MIDI only exposes clock and tempo).
+
+---
+
+## 7. Linked envelopes and styles
+
+### 7.1 Linked envelopes (Phase 5)
+
+One drag changes the same envelope stage in several operators.
+
+| Decision | |
+|---|---|
+| Trigger | A sticky **Link** toggle in the EG area, and **Alt/Option** held while dragging for a one-off. Not Shift: Shift is "fine drag" on every knob in all the sibling editors. |
+| Scaling | **Rates move by the same delta** (a DX rate already maps to time on a curve, so +10 is "all a bit faster"). **Levels scale by the same ratio** (OP1 L2 90 → 60 sets every other L2 to ⅔ of its value), so the balance between operators stays. A level dragged from 0 has no ratio: the others then follow by the delta. |
+| Which operators | **Same role**: carriers follow carriers (loudness), modulators follow modulators (timbre), by the current algorithm (`params/algorithms.ts`). |
+| Controls | The EG graph points and the R1–R4 / L1–L4 knobs. Not the Pitch EG. |
+
+- **From a snapshot.** A drag computes every linked value from the voice as it was when the drag began, not step by step: an operator that hits 0 or 127 clamps on its own, and dragging back restores all of them exactly. Wheel and arrow keys (no drag) link one step at a time from the current values.
+- **One undo step** per drag (the existing history gesture). The linked values go out as Parameter Changes, coalesced per parameter as now.
+- **Seen:** while linked, the following operators' EG graphs and knobs light up as panel moves do.
+- **Code:** `params/envelope.ts`, pure: `linkedEgChanges(start, algorithm, op, kind, stage, value) → changes`, plus the transforms Phase 6 reuses (`scaleTimes`, `scaleLevels`). The store keeps the voice at gesture start; `Knob` and `EgGraph` report Alt with the gesture. Tests: deltas, ratios, the zero case, clamping and return, same-role selection for all 12 algorithms.
+
+### 7.2 Styles: Init, Adjust, Randomize (Phase 6)
+
+**Init ▾** in the top bar becomes a popover: the style choices, then **Init**, **Adjust** and **Randomize**. Each action is one undo step, sent as Parameter Changes (paced batches), so sounding notes keep sounding.
+
+**The choices, by axis:**
+
+| Axis | Kind | Values |
+|---|---|---|
+| Family | pick one (or none) | bass, organ, strings, plucked string, bell / mallet, e-piano / keys, brass, lead, percussion |
+| Character | combinable, each with an amount | analogue, classic FM, metallic, hollow, noisy, gritty |
+| Brightness | slider | mellow ↔ bright |
+| Treble | slider | the high register: tamer ↔ brighter up the keyboard (keyboard scaling and rate scaling) |
+| Envelope shape | pick one | pluck, struck (keyboard), bowed, pad, reverse, organ / gate, brass swell, atmo (= pad + long + hall) |
+| Envelope modifiers | sliders | length (short ↔ long), evolving, expressive |
+| Space | pick one, or **keep my effects** | dry, ensemble, room, hall, echo |
+
+**What each does on the DX (sound design):**
+
+- **Families** set the skeleton: algorithm, ratios, which operators are timbre and which loudness.
+
+  | Family | Algorithm and ratios (starting points) |
+  |---|---|
+  | bass | 1 or 3: a stack, carrier 0.5–1, modulators 1–2, some feedback |
+  | organ | 12 (or 9–11): carriers at drawbar ratios 0.5, 1, 2, 3 (4, 6), level as the drawbars |
+  | strings | 6–8 or 12: two detuned carriers with soft modulators at 1–2, slow modulator attack |
+  | plucked string | 1 or 2: modulator at 1–3 with a fast decay, rate scaling up |
+  | bell / mallet | 8: pairs at inharmonic ratios (1 : 3.5, 1 : 1.41, 2 : 7), long decay; mallet: short |
+  | e-piano / keys | 8: a 1 : 1 pair for the body, a high-ratio (14) fast-decaying pair for the tine |
+  | brass | 1 or 5: modulator at 1, modulator EG slightly slower than the carrier's, a small pitch EG blip |
+  | lead | 1 or 2, mono with portamento, saw feedback, vibrato after a delay |
+  | percussion | fixed-frequency modulators, very fast envelopes, noisy feedback |
+
+- **Characters** reshape the spectrum: **analogue** saw or square feedback on carriers, whole-number ratios, slight detune, chorus; **classic FM** high modulation depth, contrasting ratios, velocity on modulators; **metallic** pulls ratios off whole numbers; **hollow** odd harmonics (ratios like 1 : 2, 1 : 3, square feedback); **noisy** fixed-frequency modulators, a lot of feedback, S&H LFO; **gritty** distortion, square feedback, a little inharmonicity. "harsh" is the bright end with gritty.
+- **Brightness** scales the modulators' levels (and their velocity); **treble** sets keyboard scaling (right side) and rate scaling on the modulators.
+- **Shapes** set the envelopes per role: carriers the loudness, modulators the timbre (usually a bit faster or shorter, for an opening and closing "filter"). Reverse: slow R1 to L1, then R2 instant to L2 = 0.
+- **Modifiers:** length scales all times (`scaleTimes`); evolving gives the operators different slow rates and stage levels and a slow AMD; expressive sets velocity on modulators and carriers and rate scaling.
+- **Effects:** slot 1 comes from the character (gritty → distortion, analogue → chorus, hollow → phaser), slot 2 from the space (ensemble → chorus, room / hall → reverb, echo → delay). Both stay as they are with **keep my effects**.
+
+**The three actions:**
+
+- **Init:** the family's template, then character, brightness, treble, shape, modifiers and space, with a little randomness inside the style. **Roll again** gives another variation. The name comes from the style, in 10 characters ("Mellow Bass", "Hollow Pad").
+- **Adjust:** the same transforms on the current voice, by an **amount**; each click applies it once (clicking again goes further). Without a family, the voice keeps its algorithm and ratios.
+- **Randomize:** **within the style** (Init with wider randomness) or **mutate the current voice by N %** (small random changes that respect the roles; the algorithm only changes from about 50 %).
+
+**Code:** `style/` with pure functions `(voice, choices, random) → voice`: `templates.ts` (families), `transforms.ts` (characters, brightness, treble, shapes, modifiers, effects; using `params/envelope.ts`), `random.ts` (a seeded generator, so tests are exact and Roll again is a new seed), `name.ts`. The store gets one `applyVoice(voice, label)` (the difference as Parameter Changes, one undo step), and the popover `StyleMenu.tsx` replaces the Init button. Tests: every result is a valid voice (`voiceProblems` empty, at least one carrier audible), the name fits 10 characters, the same seed gives the same voice, amount 0 and mutate 0 % change nothing, keep my effects keeps both slots.
+- **On the DX:** the templates are starting points to tune by ear: a listening session per family and shape, as with the demo voices.

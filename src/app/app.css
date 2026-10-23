@@ -329,3 +329,8 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 
 /* ---- a render error ---- */
 .error-page { display: block; margin: 40px auto; }
+
+/* ---- linked envelopes ---- */
+.op__eg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.link-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; font: 500 11px var(--font); text-transform: none; letter-spacing: 0; color: var(--ink-dim); }
+.link-toggle.on { color: var(--ink); }

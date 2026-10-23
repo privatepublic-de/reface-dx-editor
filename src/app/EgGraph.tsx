@@ -3,6 +3,8 @@
 // longer the slower it is (a picture, not the DX's real timing). The points can be dragged: up and down sets
 // the level, sideways the rate of the segment leading to it. Other operators' envelopes can show as ghosts.
 
+import { useRef } from 'react'
+
 const W = 240
 const H = 72
 const PAD = 6
@@ -37,6 +39,8 @@ function xs(rates: readonly number[]) {
 }
 
 export function EgGraph({ rates, levels, levelMin = 0, levelMax = 127, ghosts = [], label, onChange, onGesture }: EgGraphProps) {
+  /** Where in the point the pointer took hold, so grabbing it a little off-centre doesn't make it jump. */
+  const grab = useRef({ dx: 0, dy: 0 })
   const y = (level: number) => PAD + (1 - (level - levelMin) / (levelMax - levelMin)) * (H - PAD * 2)
   const path = (r: readonly number[], l: readonly number[]) => {
     const x = xs(r)
@@ -71,14 +75,16 @@ export function EgGraph({ rates, levels, levelMin = 0, levelMax = 127, ghosts = 
             className="eg__handle"
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId)
+              const r = e.currentTarget.ownerSVGElement!.getBoundingClientRect()
+              grab.current = { dx: ((e.clientX - r.left) / r.width) * W - x[h.at], dy: ((e.clientY - r.top) / r.height) * H - y(levels[h.level]) }
               onGesture?.(true)
             }}
             onPointerMove={(e) => {
               if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
               const svg = e.currentTarget.ownerSVGElement!
               const r = svg.getBoundingClientRect()
-              const px = ((e.clientX - r.left) / r.width) * W
-              const py = ((e.clientY - r.top) / r.height) * H
+              const px = ((e.clientX - r.left) / r.width) * W - grab.current.dx
+              const py = ((e.clientY - r.top) / r.height) * H - grab.current.dy
               const level = clampL(levelAt(py))
               const rate = clampR(rateAt(px - x[h.from]))
               if (level !== levels[h.level]) onChange('level', h.level, level)

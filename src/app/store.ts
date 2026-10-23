@@ -92,7 +92,10 @@ export interface EditorState {
   /** An edit from the editor: goes to the DX as Parameter Changes, as one undo step called `label`. */
   setValues(changes: Change[], label: string, key?: string): void
   setValue(address: Address, value: number): void
-  setSystemValue(offset: number, value: number): void
+  /** A SYSTEM setting on the DX, live; several bytes for Master Tune and Tempo. Not part of undo. */
+  setSystemValue(offset: number, value: number | number[]): void
+  /** Reads SYSTEM again (the settings may have been changed on the DX). */
+  refreshSystem(): Promise<void>
   beginGesture(): void
   endGesture(): void
   undo(): void
@@ -391,6 +394,11 @@ export const useEditor = create<EditorState>((set, get) => {
       if (!session) return
       session.setSystem(offset, value)
       set({ system: session.system && Uint8Array.from(session.system) })
+    },
+
+    async refreshSystem() {
+      const system = await session?.readSystem()
+      if (system) set({ system: Uint8Array.from(system) })
     },
 
     beginGesture: () => history.beginGesture(),

@@ -237,3 +237,25 @@ describe('the demo’s own library', () => {
     expect(lib().memory[3]).toBeNull()
   })
 })
+
+describe('DX settings', () => {
+  it('change the DX at once, several bytes for Master Tune and Tempo', async () => {
+    const { masterTuneBytes, masterTuneCents, tempoBpm, tempoBytes } = await import('../src/params/system')
+    await demo()
+    s().setSystemValue(0x02, masterTuneBytes(-12.5))
+    s().setSystemValue(0x08, tempoBytes(140))
+    s().setSystemValue(0x01, 3)
+    await vi.advanceTimersByTimeAsync(50)
+    const sys = s().fake!.system
+    expect(masterTuneCents(sys)).toBeCloseTo(-12.5)
+    expect(tempoBpm(sys)).toBe(140)
+    expect(sys[0x01]).toBe(3)
+    // the editor now plays on the new receive channel
+    const sent: Uint8Array[] = []
+    const fake = s().fake!
+    const send = fake.send.bind(fake)
+    fake.send = (m) => (sent.push(m), send(m))
+    s().noteOn(60, 90)
+    expect(sent.at(-1)).toEqual(Uint8Array.of(0x93, 60, 90))
+  })
+})

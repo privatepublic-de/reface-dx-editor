@@ -319,3 +319,13 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .voice-row__tools { display: flex; gap: 4px; opacity: .55; }
 .voice-row:hover .voice-row__tools, .voice-row:focus-within .voice-row__tools { opacity: 1; }
 .voice-row__tools button { padding: 1px 7px; font-size: 12px; }
+
+/* ---- DX settings ---- */
+.settings-dialog { width: min(620px, calc(100vw - 32px)); }
+.settings-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: flex-start; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; padding: 3px 2px; }
+.settings-field .control__label { text-align: left; }
+.settings-dialog .note { margin-top: 6px; }
+
+/* ---- a render error ---- */
+.error-page { display: block; margin: 40px auto; }

@@ -3,6 +3,7 @@ import { diffVoices, locationName, voiceName } from '../sysex/codec'
 import { AboutDialog } from './AboutDialog'
 import { Keyboard } from './Keyboard'
 import { LibraryPanel } from './Library'
+import { SettingsDialog } from './SettingsDialog'
 import { StoreButton } from './StoreButton'
 import { Panel } from './Panel'
 import { isOnline, useEditor, type Status } from './store'
@@ -79,6 +80,7 @@ function ConnectionBar() {
           </div>
         )}
         <div className="bar__group">
+          {online && <SettingsButton />}
           <HelpButton />
         </div>
         <ConnectionButton />
@@ -254,6 +256,18 @@ function Welcome() {
         <button onClick={() => void startDemo()} disabled={status === 'connecting'}>Try the demo</button>
       </p>
     </section>
+  )
+}
+
+function SettingsButton() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button className="icon" onClick={() => setOpen(true)} title="DX settings: MIDI channels, MIDI Control, tuning, pedal, speakers" aria-label="DX settings">
+        <Icon d="M2 4h6M11 4h3M9.5 2.5v3M2 12h3M8 12h6M6.5 10.5v3" />
+      </button>
+      {open && <SettingsDialog onClose={() => setOpen(false)} />}
+    </>
   )
 }
 

@@ -19,7 +19,10 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <button aria-label="Close">×</button>
       </form>
       <h2>reface DX Editor</h2>
-      <p className="dim">Version {version} · © 2026 Peter Witzel · MIT License</p>
+      <p className="dim">
+        Version {version} · © 2026 Peter Witzel · MIT License ·{' '}
+        <a href="privacy.html" target="_blank" rel="noreferrer">Privacy</a>
+      </p>
       <p>A voice editor for the Yamaha reface DX over Web MIDI: every parameter on one screen, including those behind the DX’s Edit mode.</p>
 
       <h3>On the DX</h3>

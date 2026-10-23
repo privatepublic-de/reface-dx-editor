@@ -127,10 +127,11 @@ export class Session {
     return this.readVoice()
   }
 
-  /** A SYSTEM setting, live (Q11). */
-  setSystem(offset: number, value: number) {
-    this.system?.set([value], offset)
-    this.sender.push([0x00, 0x00, offset], [value])
+  /** A SYSTEM setting, live (Q11). Master Tune is 4 bytes at 02, Tempo 2 at 08: one Parameter Change each. */
+  setSystem(offset: number, data: number | number[]) {
+    const bytes = typeof data === 'number' ? [data] : data
+    this.system?.set(bytes, offset)
+    this.sender.push([0x00, 0x00, offset], bytes)
   }
 
   noteOn(note: number, velocity: number) {

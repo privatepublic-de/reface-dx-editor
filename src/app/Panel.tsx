@@ -1,7 +1,7 @@
 // The voice on one screen: the algorithm and the common settings on the left, the four operators side by side
 // (each with its frequency, level, feedback, envelope, LFO depths and keyboard scaling), as the DX's FM section
 // and Edit mode pages hold them (Reference Manual pp. 3–10).
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addressKey } from '../params/address'
 import { isCarrier, modulates } from '../params/algorithms'
 import { commonParam, EFFECT_PARAM_LABELS, EFFECT_TYPES, NAME_LENGTH } from '../params/common'
@@ -48,7 +48,24 @@ function S({ param, address, steps, toggle, hideLabel, title }: { param: Param; 
   return <Switch label={title ?? param.label} steps={steps ?? param.labels ?? []} value={value} min={param.min} toggle={toggle} hideLabel={hideLabel} flash={flash} onChange={(v) => setValue(address, v)} />
 }
 
+/** The width from which the operators stand in one row beside the side column (app.css: the 1500 px breakpoint). */
+const WIDE = '(min-width: 1501px)'
+
+function useMedia(query: string) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const m = window.matchMedia(query)
+    const on = () => setMatches(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [query])
+  return matches
+}
+
+/** The effects go where there's room: beside the Pitch EG when the side boxes run along the top, under the four
+ *  operators when they stand in one row (the side column alone is then about as tall as the strips). */
 export function Panel() {
+  const wide = useMedia(WIDE)
   return (
     <div className="panel">
       <div className="panel__side">
@@ -56,10 +73,11 @@ export function Panel() {
         <VoiceBox />
         <LfoBox />
         <PitchEgBox />
-        <EffectsBox />
+        {!wide && <EffectsBox />}
       </div>
       <div className="panel__ops">
         {[0, 1, 2, 3].map((op) => <OperatorStrip key={op} op={op} />)}
+        {wide && <EffectsBox />}
       </div>
     </div>
   )
@@ -165,11 +183,11 @@ function EffectsBox() {
       <h2>Effects</h2>
       <div className="fx-chain">
         <span className="fx-chain__end">FM</span>
-        <span className="fx-chain__arrow fx-chain__arrow--end" aria-hidden="true" />
+        <span className="fx-chain__arrow" aria-hidden="true" />
         <Pedal n={1} at={0x1d} />
         <span className="fx-chain__arrow" aria-hidden="true" />
         <Pedal n={2} at={0x20} />
-        <span className="fx-chain__arrow fx-chain__arrow--end" aria-hidden="true" />
+        <span className="fx-chain__arrow" aria-hidden="true" />
         <span className="fx-chain__end">out</span>
       </div>
     </section>

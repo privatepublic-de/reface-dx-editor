@@ -124,7 +124,8 @@ main { padding: 14px 16px 40px; }
 /* ---- the effects: a chain of two pedals, FM → 1 → 2 → out ---- */
 .fx-chain { display: flex; align-items: center; gap: 6px; }
 .fx-chain__end { font: 600 12px var(--font-narrow); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
-.fx-chain__arrow { flex: 0 0 14px; height: 2px; background: var(--control-edge); position: relative; }
+/* the arrows are empty: a width (not only a flex basis), or some engines count them as nothing when sizing the box */
+.fx-chain__arrow { flex: none; width: 14px; height: 2px; background: var(--control-edge); position: relative; }
 .fx-chain__arrow::after { content: ''; position: absolute; right: -1px; top: -3px; border: 4px solid transparent; border-left: 5px solid var(--control-edge); border-right: 0; }
 .pedal { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 6px; background: #1a120ecc; border: 1px solid var(--control-edge); border-radius: 6px; }
 .pedal--thru .pedal__knobs { opacity: .4; }
@@ -134,13 +135,12 @@ main { padding: 14px 16px 40px; }
   font: 500 15px var(--font-narrow); letter-spacing: .04em; text-align: center; text-align-last: center; padding: 3px 0; cursor: pointer; }
 .pedal__screen select option { color: var(--ink); background: var(--control); }
 .pedal__knobs { display: flex; justify-content: space-around; }
-/* the side column alone (wide windows): the pedals side by side still, the chain's ends left out to make room */
-@media (min-width: 1501px) {
-  .fx-chain__end, .fx-chain__arrow--end { display: none; }
-  .fx-chain__arrow { flex-basis: 8px; }
-  .pedal { padding: 5px; }
-  .pedal__screen button { padding: 2px 5px; }
-  .pedal__screen select { font-size: 14px; }
+/* wide windows: under the four operators, the chain at its natural size from the left */
+.panel__ops > .fx-box { grid-column: 1 / -1; justify-self: start; width: max-content; max-width: 100%; }
+.panel__ops > .fx-box .fx-chain { gap: 10px; }
+.panel__ops > .fx-box .fx-chain__arrow { width: 22px; }
+/* a width, not only a flex basis: some engines size the box from the pedals' content otherwise, and the second pedal hangs out */
+.panel__ops > .fx-box .pedal { flex: none; width: 280px; box-sizing: border-box; padding: 8px 10px; }
 }
 @media (max-width: 560px) {
   .fx-chain { flex-wrap: wrap; }

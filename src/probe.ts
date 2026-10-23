@@ -8,11 +8,9 @@ import {
 } from './sysex/messages'
 import { cloneVoice, diffVoices, formatVoice, locationName, setVoiceName, voiceName, voicesFromBytes, voiceToMessages, VoiceAssembler, type Voice } from './sysex/codec'
 import { ccLabel } from './params/cc'
-import { COMMON_PARAMS, NAME_LENGTH } from './params/common'
 import { describeFrequency, formatDetune } from './params/display'
-import { OPERATOR_PARAMS } from './params/operator'
-import { formatValue } from './params/param'
-import { formatSystem, SYSTEM_PARAMS } from './params/system'
+import { formatSystem } from './params/system'
+import { addressLabel, addressValue } from './params/address'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 const num = (sel: string) => Number($<HTMLInputElement>(sel).value)
@@ -65,23 +63,6 @@ const stamp = () => `${String(Math.round(performance.now() - t0)).padStart(7)} m
 const sinceSend = () => {
   const d = performance.now() - lastSendAt
   return d < 1500 ? `  (+${Math.round(d)} ms after send)` : ''
-}
-
-/** "OP2 Output level", "Algorithm", "Name char 3", "TR CH": what lives at a parameter address. */
-function addressLabel(a: Address): string {
-  if (a[0] === 0x00 && a[1] === 0x00) return SYSTEM_PARAMS.find((p) => p.offset === a[2])?.label ?? `SYSTEM byte 0x${a[2].toString(16)}`
-  if (a[0] === 0x30 && a[1] === 0x00) {
-    if (a[2] < NAME_LENGTH) return `Name char ${a[2] + 1}`
-    return COMMON_PARAMS.find((p) => p.offset === a[2])?.label ?? `Common byte 0x${a[2].toString(16)}`
-  }
-  if (a[0] === 0x31 && a[1] < 4) return `OP${a[1] + 1} ${OPERATOR_PARAMS.find((p) => p.offset === a[2])?.label ?? `byte 0x${a[2].toString(16)}`}`
-  return `address ${formatAddress(a)}`
-}
-
-function addressValue(a: Address, v: number): string {
-  const p = a[0] === 0x00 ? SYSTEM_PARAMS.find((q) => q.offset === a[2]) : a[0] === 0x30 ? COMMON_PARAMS.find((q) => q.offset === a[2]) : OPERATOR_PARAMS.find((q) => q.offset === a[2])
-  if (a[0] === 0x30 && a[2] < NAME_LENGTH) return `'${String.fromCharCode(v)}'`
-  return p ? formatValue(p, v) : String(v)
 }
 
 // ---------- MIDI in ----------

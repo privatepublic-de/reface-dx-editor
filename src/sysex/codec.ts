@@ -163,3 +163,15 @@ export function voiceProblems(v: Voice): string[] {
   })
   return out
 }
+
+/** What turns voice `from` into `to`, as Parameter Change addresses and data: the name as one 10-byte change,
+ *  everything else byte by byte. For undo/redo and anything else live: never a bulk (FINDINGS Q7). */
+export function voiceChanges(from: Voice, to: Voice): [Address, number[]][] {
+  const out: [Address, number[]][] = []
+  if (from.common.subarray(0, NAME_LENGTH).some((b, i) => b !== to.common[i])) out.push([[0x30, 0x00, 0x00], Array.from(to.common.subarray(0, NAME_LENGTH))])
+  for (let i = NAME_LENGTH; i < SIZE.common; i++) if (from.common[i] !== to.common[i]) out.push([[0x30, 0x00, i], [to.common[i]]])
+  from.ops.forEach((op, n) => {
+    for (let i = 0; i < SIZE.operator; i++) if (op[i] !== to.ops[n][i]) out.push([[0x31, n, i], [to.ops[n][i]]])
+  })
+  return out
+}

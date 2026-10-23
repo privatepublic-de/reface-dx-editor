@@ -25,7 +25,7 @@ export const COMMON_PARAMS: readonly Param[] = [
   { offset: 0x0d, key: 'partMode', label: 'Part mode', min: 0, max: 2, labels: ['poly', 'mono-full', 'mono-legato'] },
   { offset: 0x0e, key: 'portamento', label: 'Portamento', min: 0, max: 127 },
   { offset: 0x0f, key: 'pbRange', label: 'PB range', min: 0x28, max: 0x58, center: 0x40 },
-  { offset: 0x10, key: 'algorithm', label: 'Algorithm', min: 0, max: 11, format: (v) => String(v + 1) },
+  { offset: 0x10, key: 'algorithm', label: 'Algorithm', min: 0, max: 11, base: 1 },
   { offset: 0x11, key: 'lfoWave', label: 'LFO wave', min: 0, max: 6, labels: LFO_WAVES },
   { offset: 0x12, key: 'lfoSpeed', label: 'LFO speed', min: 0, max: 127 },
   { offset: 0x13, key: 'lfoDelay', label: 'LFO delay', min: 0, max: 127 },

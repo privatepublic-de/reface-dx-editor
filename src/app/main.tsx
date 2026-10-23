@@ -1,11 +1,20 @@
-// Placeholder until Phase 2: the editor isn't built yet; the Phase 0 probe is at probe.html.
+import '@fontsource/barlow/400.css'
+import '@fontsource/barlow/600.css'
+import '@fontsource/barlow-condensed/500.css'
+import '@fontsource/barlow-condensed/600.css'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import './ui-base.css'
+import './app.css'
+import { useEditor } from './store'
+
+if (new URLSearchParams(location.search).has('demo')) void useEditor.getState().startDemo()
+// For poking at the store (and the demo's fake DX) in the browser during development, never in a build.
+if (import.meta.env.DEV) Object.assign(window, { editorStore: useEditor })
 
 createRoot(document.getElementById('root')!).render(
-  <main style={{ font: '15px/1.5 system-ui, sans-serif', color: '#e2e8ea', padding: 24 }}>
-    <h1 style={{ fontSize: 20 }}>reface DX Editor</h1>
-    <p>
-      The editor comes in Phase 2. For now, open the <a href="./probe.html" style={{ color: '#3fb8c8' }}>Phase 0 probe</a>.
-    </p>
-  </main>,
+  <StrictMode>
+    <App />
+  </StrictMode>,
 )

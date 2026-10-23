@@ -1,0 +1,38 @@
+/* The chrome the synth editors share (bars, dialogs, focus, status): the same in each
+   repo, copied rather than packaged. Only the lines marked "device" differ; they map onto this
+   editor's own materials in app.css. Chrome uses --ui-*; the panel keeps the device's names.
+   Spec: synth-editors/DESIGN-ui-consistency.md, tier 1. */
+:root {
+  --ui-bg: var(--bg); /* device */
+  --ui-bar: var(--bar); /* device */
+  --ui-ink: var(--ink); /* device */
+  --ui-ink-dim: var(--ink-dim); /* device */
+  --ui-control: var(--control); /* device */
+  --ui-control-edge: var(--control-edge); /* device */
+  --ui-signature: var(--dx-signature); /* device: wordmark and favicon only */
+  /* Focus is light, never a value colour: orange already means selected or live. */
+  --ui-focus: #e9edf1;
+  --ui-ok: #49d36b;
+  --ui-warn: #e0a030;
+  --ui-bad: #ff4a3d;
+  --ui-backdrop: #0009;
+  --ui-radius: 4px;
+  --ui-radius-dialog: 8px;
+  /* Chrome buttons: one height in the bar, one padding and text size in bar, dialogs and footer. */
+  --ui-bar-ctl: 30px;
+  --ui-pad: 4px 10px;
+  --ui-text: 14px;
+  --ui-font: 'Barlow', system-ui, sans-serif;
+  --ui-font-narrow: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+/* One dialog shape: radius 8, this backdrop, a Condensed 600 20 px title, the actions
+   right-aligned with the primary last. Escape closes (native <dialog>, or a key handler). */
+dialog::backdrop {
+  background: var(--ui-backdrop);
+}

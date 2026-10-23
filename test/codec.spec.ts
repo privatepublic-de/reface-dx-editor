@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { initVoice } from '../src/params/init'
 import {
   cloneVoice, diffVoices, locationName, setVoiceName, setVoiceValues, VOICE_BYTES, voiceName, voiceProblems, voicesFromBytes, voiceToBytes, voiceToMessages,
-  voiceValueAt, type Voice,
+  voiceValueAt,
 } from '../src/sysex/codec'
 import { parseSysex } from '../src/sysex/messages'
 

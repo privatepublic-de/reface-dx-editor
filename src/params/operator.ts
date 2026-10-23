@@ -29,3 +29,22 @@ export const OPERATOR_PARAMS: readonly Param[] = [
 ]
 
 export const operatorParam = (key: string) => OPERATOR_PARAMS.find((p) => p.key === key)!
+
+/** Keyboard scaling as the DX's screen shows one side (Reference Manual p. 4): a Depth −127…+127 and a curve
+ *  LIN or EXP. The data keeps the depth as 0–127 and the sign in the curve byte (−LIN, −EXP, +EXP, +LIN). */
+export interface KscSide {
+  depth: number
+  exp: boolean
+}
+
+export function kscSide(depth: number, curve: number): KscSide {
+  const negative = curve <= 1
+  return { depth: negative ? -depth : depth, exp: curve === 1 || curve === 2 }
+}
+
+/** [depth byte, curve byte] for a side. Depth 0 keeps the sign the curve had, so turning through zero and back
+ *  doesn't flip it. */
+export function kscBytes(side: KscSide, previousCurve: number): [number, number] {
+  const negative = side.depth < 0 || (side.depth === 0 && previousCurve <= 1)
+  return [Math.abs(side.depth), negative ? (side.exp ? 1 : 0) : side.exp ? 2 : 3]
+}

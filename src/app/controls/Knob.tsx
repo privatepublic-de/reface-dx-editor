@@ -82,6 +82,8 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
   return (
     <div className={`control knob${small ? ' knob--small' : ''}${flash ? ' control--touched' : ''}`}>
       <span className="control__label">{title ?? p.label}</span>
+      {/* the value sits in the ring's opening at the bottom, so a knob is label + dial, no row of its own */}
+      <div className="knob__dial">
       <svg
         ref={ref}
         viewBox="0 0 48 48"
@@ -157,6 +159,7 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
           {shown}
         </button>
       )}
+      </div>
     </div>
   )
 }

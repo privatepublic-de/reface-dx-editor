@@ -166,9 +166,16 @@ main { padding: 14px 16px 40px; }
 
 .knob { width: 64px; }
 .knob--small { width: 46px; }
+.knob__dial { position: relative; width: 48px; height: 48px; margin-bottom: 3px; }
+.knob--small .knob__dial { width: 34px; height: 34px; }
+/* the value in the ring's opening: over the cap's lower edge, between the arc's ends */
+.knob__dial .control__value, .knob__dial .control__input { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%);
+  min-width: 0; padding: 0 3px; font-size: 12px; line-height: 14px; white-space: nowrap; border-radius: 3px; }
+.knob__dial .control__value { background: #1d1511cc; }
+.knob__dial .control__input { width: 4.2em; z-index: 2; }
 .knob__svg { width: 48px; height: 48px; cursor: ns-resize; touch-action: none; overflow: visible; }
 .knob--small .knob__svg { width: 34px; height: 34px; }
-.knob--small .control__value { min-width: 2.6em; font-size: 12px; }
+.knob--small .knob__dial .control__value { font-size: 11px; line-height: 12px; bottom: -5px; }
 .knob__svg[aria-disabled] { cursor: default; opacity: .5; }
 .knob__svg:focus-visible { outline: none; }
 .knob__svg:focus-visible .knob__cap { stroke: var(--focus); stroke-width: 2; }

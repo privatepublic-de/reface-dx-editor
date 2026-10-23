@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { initVoice } from '../src/params/init'
 import {
@@ -49,18 +49,28 @@ describe('voice codec', () => {
   })
 })
 
-// A 32-voice dump from the RDX emulator repo (no license, so not committed): put it at local/RefaceDX.syx
-// to check the parser against bytes that came from a real DX at some point.
-const LOCAL_DUMP = new URL('../local/RefaceDX.syx', import.meta.url)
-describe.skipIf(!existsSync(LOCAL_DUMP))('local 32-voice dump', () => {
-  it('parses into 32 voices and writes them back byte for byte', () => {
-    const bytes = readFileSync(LOCAL_DUMP)
-    expect(bytes.length).toBe(32 * VOICE_BYTES)
+// .syx files in local/ (gitignored: the RDX emulator's dump has no license, and captures of a user's DX are
+// theirs): each must parse without problems, stay in range, and be written back byte for byte.
+const LOCAL = new URL('../local/', import.meta.url)
+const LOCAL_FILES = existsSync(LOCAL) ? readdirSync(LOCAL).filter((f) => f.endsWith('.syx')) : []
+describe.skipIf(!LOCAL_FILES.length)('local .syx files', () => {
+  it.each(LOCAL_FILES)('%s round-trips', (file) => {
+    const bytes = readFileSync(new URL(file, LOCAL))
     const { voices, problems } = voicesFromBytes(bytes)
     expect(problems).toEqual([])
-    expect(voices).toHaveLength(32)
-    const again = new Uint8Array(voices.flatMap((v) => [...voiceToBytes(0, v)]))
-    expect(again).toEqual(new Uint8Array(bytes))
+    expect(voices.length * VOICE_BYTES).toBe(bytes.length)
+    expect(voices.flatMap(voiceProblems)).toEqual([])
+    expect(new Uint8Array(voices.flatMap((v) => [...voiceToBytes(0, v)]))).toEqual(new Uint8Array(bytes))
+  })
+
+  it('reserved bytes: all 0? (printed, not asserted)', () => {
+    const odd = LOCAL_FILES.flatMap((file) =>
+      voicesFromBytes(readFileSync(new URL(file, LOCAL))).voices.flatMap((v, i) => [
+        ...[0x0a, 0x0b, 0x23, 0x24, 0x25].filter((o) => v.common[o]).map((o) => `${file} ${i + 1} Common 0x${o.toString(16)} = ${v.common[o]}`),
+        ...v.ops.flatMap((op, n) => [0x19, 0x1a, 0x1b].filter((o) => op[o]).map((o) => `${file} ${i + 1} OP${n + 1} 0x${o.toString(16)} = ${op[o]}`)),
+      ]),
+    )
+    console.log(odd.length ? `non-zero reserved bytes:\n${odd.join('\n')}` : `reserved bytes all 0 in ${LOCAL_FILES.join(', ')}`)
   })
 })
 

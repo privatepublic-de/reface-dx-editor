@@ -1,6 +1,6 @@
 // Default voice data, as read from the DX on 2026-10-23:
 // - initVoice(): FUNCTION → Job → VOICE INIT (FINDINGS Q14). OP1 at level 100, OP2–4 at 0: a sine.
-//   The reserved bytes weren't shown in that read and are assumed 0.
+//   The reserved bytes weren't shown in that read; they are 0 in all 32 voices of the test DX's memory, so 0 here.
 // - RESET_OPERATOR: what the DX put into the operators a framed voice left out (Q7). The same as a VOICE INIT
 //   operator at level 100; On and Pitch EG on didn't show in Q7 and are taken from VOICE INIT.
 import type { Voice } from '../sysex/codec'

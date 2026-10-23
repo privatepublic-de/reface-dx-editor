@@ -1,6 +1,5 @@
 // Voices for ?demo and the fake DX, written for this project (no factory or third-party voices).
-// They use algorithm 8 (confirmed by the manual) and 1 and 12 (a plain stack and all carriers in the
-// unverified table): recheck them when the algorithms are checked on the DX (Q13).
+// They use algorithms 1 (a stack), 8 (two pairs) and 12 (all carriers).
 import { initVoice } from '../params/init'
 import { setVoiceName, type Voice } from '../sysex/codec'
 

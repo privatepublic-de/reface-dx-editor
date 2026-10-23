@@ -10,6 +10,29 @@ describe('algorithms', () => {
     expect(ALGORITHMS[7]).toEqual({ carriers: [0, 2], modulations: [[1, 0], [3, 2]] })
   })
 
+  it('matches the reface DX algorithm chart (Q13)', () => {
+    // Carriers, and "modulator → modulated" as the chart draws them (1-based).
+    const chart: [number[], string][] = [
+      [[1], '4→3 3→2 2→1'],
+      [[1], '4→2 3→2 2→1'],
+      [[1], '3→2 2→1 4→1'],
+      [[1], '4→2 4→3 2→1 3→1'],
+      [[1], '2→1 3→1 4→1'],
+      [[1, 2], '4→3 3→2'],
+      [[1, 2], '4→3 3→2 3→1'],
+      [[1, 3], '2→1 4→3'],
+      [[1, 2, 3], '4→1 4→2 4→3'],
+      [[1, 2, 3], '4→2 4→3'],
+      [[1, 2, 3], '4→3'],
+      [[1, 2, 3, 4], ''],
+    ]
+    const edges = (s: string) => s.split(' ').filter(Boolean).sort()
+    ALGORITHMS.forEach((a, i) => {
+      expect(a.carriers.map((c) => c + 1), `algorithm ${i + 1} carriers`).toEqual(chart[i][0])
+      expect(a.modulations.map(([f, t]) => `${f + 1}→${t + 1}`).sort(), `algorithm ${i + 1} routing`).toEqual(edges(chart[i][1]))
+    })
+  })
+
   it.each(ALGORITHMS.map((a, i) => [i + 1, a] as const))('algorithm %i is a well-formed graph', (_, a) => {
     for (const [from, to] of a.modulations) {
       expect([from, to].every((op) => op >= 0 && op < 4)).toBe(true)

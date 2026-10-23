@@ -1,8 +1,8 @@
 // The 12 algorithms: which operators are carriers and which modulates which. Operators are 0-based (0 = OP1).
 // Every operator also has its own feedback loop (level + saw/square), which isn't part of the table.
 //
-// UNVERIFIED except algorithm 8 (Owner's Manual p. 19: 2 → 1, 4 → 3, carriers 1 and 3). The rest follow the
-// RDX emulator's routing comments; its author never had a DX. To check against the DX's ALGO screen (Q13).
+// Checked against the reface DX algorithm chart on 2026-10-23 (FINDINGS Q13): all 12 as below. Algorithm 8
+// is also drawn in the Owner's Manual p. 19.
 
 export interface Algorithm {
   /** Operators heard at the output. */

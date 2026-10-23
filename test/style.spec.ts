@@ -3,7 +3,7 @@ import { DEMO_VOICES } from '../src/demo/demoVoices'
 import { fixedBytes, fixedHzOf, ratioBytes, ratioOf } from '../src/params/display'
 import { initVoice } from '../src/params/init'
 import { CHARACTERS, FAMILIES, NO_STYLE, SHAPES, type StyleChoices } from '../src/style/choices'
-import { mutate, styleAdjust, styleInit, styleName } from '../src/style/style'
+import { mutate, styleAdjust, styleInit, styleName, stylePreview } from '../src/style/style'
 import { rolesOf } from '../src/style/transforms'
 import { diffVoices, voiceName, voiceProblems, type Voice } from '../src/sysex/codec'
 
@@ -148,5 +148,44 @@ describe('Variation and Mutate', () => {
     }
     const kept = mutate(v, 100, 5, true)
     expect(Array.from(kept.common.subarray(0x1d, 0x23))).toEqual(Array.from(v.common.subarray(0x1d, 0x23)))
+  })
+})
+
+describe('the style editor preview', () => {
+  const original = DEMO_VOICES[2]
+  const c = style({ family: 'bell', characters: { hollow: 1 }, brightness: 0.5 })
+  const p = { start: 'mine' as const, variation: 0.2, morph: 0, mutate: 0 }
+
+  it('my voice at 0 and no mutation is the voice as it was', () => {
+    expect(stylePreview(original, c, 5, p)).toEqual(original)
+  })
+
+  it('the morph goes all the way to the style, and coming back goes back', () => {
+    const full = stylePreview(original, c, 5, { ...p, morph: 1 })
+    expect(distance(full, styleInit(c, 5, undefined, 0.2))).toBe(0)
+    const ds = [0, 0.25, 0.5, 0.75, 1].map((m) => distance(stylePreview(original, c, 5, { ...p, morph: m }), full))
+    for (let i = 1; i < ds.length; i++) expect(ds[i]).toBeLessThan(ds[i - 1])
+    expect(stylePreview(original, c, 5, { ...p, morph: 0.4 })).toEqual(stylePreview(original, c, 5, { ...p, morph: 0.4 }))
+  })
+
+  it('new voice is Init in the style; mutation goes on top, the same for the same seed', () => {
+    expect(stylePreview(original, c, 5, { ...p, start: 'new' })).toEqual(styleInit(c, 5, original, 0.2))
+    const m = stylePreview(original, c, 5, { ...p, mutate: 30 })
+    expect(distance(m, original)).toBeGreaterThan(0)
+    expect(stylePreview(original, c, 5, { ...p, mutate: 30 })).toEqual(m)
+    guard(m)
+  })
+})
+
+describe('the play mode', () => {
+  it('is the family’s own unless chosen, and a chosen one holds through morph and mutation', () => {
+    expect(styleInit(style({ family: 'lead' }), 1).common[0x0d]).toBe(1)
+    expect(styleInit(style({ family: 'lead', mode: 'poly' }), 1).common[0x0d]).toBe(0)
+    expect(styleInit(style({ shape: 'pad', mode: 'legato' }), 1).common[0x0d]).toBe(2)
+    const mine = DEMO_VOICES[0]
+    for (const morph of [0, 0.3, 1]) {
+      expect(stylePreview(mine, style({ mode: 'legato' }), 4, { start: 'mine', variation: 0, morph, mutate: 60 }).common[0x0d]).toBe(2)
+    }
+    expect(stylePreview(mine, style({ mode: 'mono' }), 4, { start: 'mine', variation: 0, morph: 0, mutate: 0 }).common.subarray(0x0e)).toEqual(mine.common.subarray(0x0e))
   })
 })

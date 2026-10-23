@@ -132,3 +132,14 @@ A distance is the mean dB difference between two fingerprints, for the spectrum 
 | Treble +1 | e-piano: 1.01 at C1 and 2.92 at C5 (flat 1.08–1.11 at 0) |
 
 Brightness −1 is still small on bass, pluck and e-piano. They're close to a sine at 0, so there's little left to take away.
+
+### FM noise, noisier (`tools/noiseProbe.ts`)
+
+Spectral flatness is the geometric mean of the power spectrum over its arithmetic mean, from 200 Hz to 12 kHz. 1 is white noise; near 0 means a few clear partials.
+
+| | C1 | C3 | C5 |
+| --- | ---: | ---: | ---: |
+| First FM noise | 0.50 | 0.59 | 0.79 |
+| Now: every level and square feedback near the top, OP2–OP4 at fixed frequencies | 0.87 | 0.86 | 0.86 |
+
+The noise is now the same all over the keyboard. Brightness +1 has nothing left to add (1.4 dB), but −1 takes the modulators down and brings back some pitch (12.9 dB).

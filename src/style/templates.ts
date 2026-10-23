@@ -6,7 +6,7 @@ import { initVoice } from '../params/init'
 import { fixedBytes, ratioBytes } from '../params/display'
 import type { Voice } from '../sysex/codec'
 import { cloneVoice } from '../sysex/codec'
-import type { Family, Space } from './choices'
+import { MODE_BYTE, type Family, type Space } from './choices'
 import type { Rng } from './random'
 import type { Envelope } from './shapes'
 
@@ -33,7 +33,7 @@ export interface Template {
   shape: Envelope
   /** the space when none is chosen */
   space: Space
-  mono?: 'full' | 'legato'
+  mono?: 'mono' | 'legato'
   portamento?: number
   transpose?: number
   /** delayed vibrato: LFO speed, delay, pitch modulation depth (on every operator) */
@@ -112,7 +112,7 @@ export const TEMPLATES: Record<Family, Template> = {
     ],
   },
   lead: {
-    algorithms: [1, 2], shape: 'gate', space: 'echo', mono: 'full', portamento: 30, vibrato: [85, 70, 8],
+    algorithms: [1, 2], shape: 'gate', space: 'echo', mono: 'mono', portamento: 30, vibrato: [85, 70, 8],
     ops: [
       { ratio: 1, level: 125, feedback: [50, 80] },
       { ratio: [1, 2], level: [70, 90] },
@@ -129,14 +129,16 @@ export const TEMPLATES: Record<Family, Template> = {
       { ratio: [1, 2.5], level: [40, 70], feedback: [90, 127] },
     ],
   },
-  // noise as the sound: every operator into OP1, two at fixed frequencies, square feedback at the top
+  // noise as the sound: every operator into OP1, three at fixed frequencies, everything and its square feedback at
+  // the top. Measured (tools/noiseProbe.ts), spectral flatness 0.87 at C1, C3 and C5 (1 is white noise); the first
+  // version had 0.50 at C1 and 0.79 at C5. Mellow takes the modulators down and brings the pitch back.
   noise: {
     algorithms: [5, 4], shape: 'struck', space: 'room',
     ops: [
-      { ratio: [1, 2], level: 118, feedback: [60, 90], square: true },
-      { fixed: [1500, 6000], level: [100, 115], feedback: [110, 127], square: true },
-      { fixed: [200, 900], level: [90, 108], feedback: [100, 127], square: true },
-      { ratio: [3.14, 7.07, 1.41], level: [80, 100], feedback: [110, 127], square: true },
+      { ratio: [1, 2], level: 118, feedback: [118, 127], square: true },
+      { fixed: [1500, 6000], level: [120, 127], feedback: [120, 127], square: true },
+      { fixed: [200, 900], level: [120, 127], feedback: [120, 127], square: true },
+      { fixed: [2000, 5000], level: [120, 127], feedback: [120, 127], square: true },
     ],
   },
 }
@@ -160,7 +162,7 @@ export function buildTemplate(t: Template, rng: Rng, spread: number): Voice {
   const v = cloneVoice(initVoice())
   v.common[0x10] = (t.algorithms.length > 1 ? choose(t.algorithms, rng, spread) : t.algorithms[0]) - 1
   v.common[0x0c] = 0x40 + (t.transpose ?? 0)
-  v.common[0x0d] = t.mono === 'full' ? 1 : t.mono === 'legato' ? 2 : 0
+  v.common[0x0d] = MODE_BYTE[t.mono ?? 'poly']
   v.common[0x0e] = t.portamento ?? 0
   if (t.vibrato) v.common.set([0, t.vibrato[0], t.vibrato[1], t.vibrato[2]], 0x11)
   t.ops.forEach((s, i) => {

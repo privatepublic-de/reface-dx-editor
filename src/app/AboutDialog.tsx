@@ -43,7 +43,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <li>The location menu next to the name selects a stored voice on the DX. Choosing a voice on the DX itself is followed here.</li>
         <li><b>Edited</b> means the voice differs from what was last read from the DX.</li>
         <li><b>Init</b> starts over with the DX’s VOICE INIT (a sine on OP1).</li>
-        <li><b>Style ▾</b>: choose a family, characters, brightness and an envelope (more under <i>More</i>). <b>New voice</b> makes a voice in that style, <b>Another</b> a different one; <b>Variation</b> goes from typical to wild. <b>Towards style</b> moves the voice you have a step towards the style (click again to go further; without a family it keeps its algorithm and ratios), <b>Mutate</b> changes it a little at random. Each is one undo step.</li>
+        <li><b>Style…</b> opens the style editor beside the voice. Choose a family, characters, brightness and an envelope (more under <i>More</i>): you hear every change on the DX at once. Start from a <b>New voice</b> in the style (<b>Variation</b> from typical to wild) or from <b>My voice</b>, moved <b>Towards</b> the style as far as you like; <b>Mutate</b> adds random changes, <b>Another</b> tries another variation. <b>Apply</b> keeps what you hear as one undo step; <b>Cancel</b> or Escape goes back to the voice as it was.</li>
         <li><b>Link</b> (in an operator’s EG) makes an envelope edit carry over to the other operators with the same role: carriers with carriers, modulators with modulators. Rates move by the same amount, levels by the same ratio. Hold Alt/Option to link one edit.</li>
       </ul>
 

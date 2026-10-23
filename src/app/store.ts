@@ -114,6 +114,15 @@ export interface EditorState {
   /** Any whole new voice (a style's Init, Adjust, Randomize) the same way: one undo step, paced Parameter
    *  Changes for what differs, no bulk (sounding notes keep sounding); the baseline stays. */
   applyVoice(voice: Voice, label: string): void
+  /** The style editor is open: the voice as it was is cached, the rest of the editor is locked, every preview goes
+   *  to the DX at once (no undo steps), and it ends with Apply (one undo step from the cached voice) or Cancel. */
+  styling: boolean
+  /** Opens a style session; the cached voice, or null if there is nothing to style. */
+  beginStyle(): Voice | null
+  /** A preview during the session: into the editor and, paced, to the DX. */
+  previewVoice(voice: Voice): void
+  /** Ends the session: Apply keeps what is heard as one undo step `label`; Cancel sends `original` back. */
+  endStyle(original: Voice, apply: boolean, label: string): void
   focusOperator(op: number): void
   noteOn(note: number, velocity: number): void
   noteOff(note: number): void
@@ -128,6 +137,9 @@ let session: Session | null = null
 let transport: MidiTransport | null = null
 const history = new History()
 let touchTimer: ReturnType<typeof setTimeout> | null = null
+/** during a style session: what has gone to the DX, and the send in flight (later previews wait and coalesce) */
+let previewSent: Voice | null = null
+let previewRun: Promise<void> | null = null
 /** the voice when the current gesture (a drag) began: what linked envelope edits are computed from */
 let gestureStart: Voice | null = null
 /** a Stop for Read all */
@@ -145,7 +157,8 @@ export const useEditor = create<EditorState>((set, get) => {
    *  location, it is what the location holds (Q4): the library's picture of the DX's memory learns it. */
   const takeVoice = (voice: Voice, program: number | null = get().program) => {
     history.reset()
-    set({ voice, baseline: cloneVoice(voice), program, reading: false })
+    // another voice on the DX ends a style session as it is: there's nothing left to go back to
+    set({ voice, baseline: cloneVoice(voice), program, reading: false, styling: false })
     labels()
     if (program !== null) useLibrary.getState().remember(program, voice)
   }
@@ -174,9 +187,11 @@ export const useEditor = create<EditorState>((set, get) => {
         const [first] = changes
         const freq = first[0][0] === 0x31 && changes.some(([a]) => a[2] === 0x16 || a[2] === 0x17)
         const what = freq ? `OP${first[0][1] + 1} frequency` : addressLabel(first[0])
-        history.record(voice, `panel:${freq ? `freq${first[0][1]}` : addressKey(first[0])}`, `${what} on the DX`)
+        // during a style session the next preview decides; no undo step for what it will overwrite
+        if (!get().styling) history.record(voice, `panel:${freq ? `freq${first[0][1]}` : addressKey(first[0])}`, `${what} on the DX`)
         const next = cloneVoice(voice)
         for (const [a, v] of changes) setVoiceValues(next, a, [v])
+        if (get().styling && previewSent) for (const [a, v] of changes) setVoiceValues(previewSent, a, [v])
         set({ voice: next, touched: changes.map(([a]) => addressKey(a)) })
         labels()
         if (touchTimer) clearTimeout(touchTimer)
@@ -216,6 +231,7 @@ export const useEditor = create<EditorState>((set, get) => {
     version: null,
     touched: [],
     undoLabel: null,
+    styling: false,
     redoLabel: null,
     replaced: null,
     focusOp: 0,
@@ -276,7 +292,7 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     async resync() {
-      if (!session) return
+      if (!session || get().styling) return
       set({ reading: true })
       const read = await session.readVoice()
       const voice = get().voice
@@ -445,6 +461,7 @@ export const useEditor = create<EditorState>((set, get) => {
     setAltHeld: (held) => get().altHeld !== held && set({ altHeld: held }),
 
     undo() {
+      if (get().styling) return
       const voice = get().voice
       const back = voice && history.undo(voice)
       if (!voice || !back || !session) return
@@ -454,6 +471,7 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     redo() {
+      if (get().styling) return
       const voice = get().voice
       const fwd = voice && history.redo(voice)
       if (!voice || !fwd || !session) return
@@ -466,9 +484,46 @@ export const useEditor = create<EditorState>((set, get) => {
       get().applyVoice(initVoice(), 'Init voice')
     },
 
+    beginStyle() {
+      const { voice, reading, styling } = get()
+      if (!voice || !session || reading || styling || useLibrary.getState().job) return null
+      previewSent = cloneVoice(voice)
+      set({ styling: true })
+      return cloneVoice(voice)
+    },
+
+    previewVoice(next) {
+      if (!get().styling || !session) return
+      set({ voice: cloneVoice(next) })
+      if (previewRun) return
+      previewRun = (async () => {
+        // until what went out is what the editor shows: a slider drag sends only its latest position
+        for (;;) {
+          const target = get().voice
+          const changes = target && previewSent ? voiceChanges(previewSent, target) : []
+          if (!session || !changes.length) break
+          previewSent = cloneVoice(target!)
+          await session.sendBatch(changes)
+        }
+      })().finally(() => (previewRun = null))
+    },
+
+    endStyle(original, apply, label) {
+      if (!get().styling) return
+      if (apply) {
+        const voice = get().voice
+        if (voice && voiceChanges(original, voice).length) {
+          history.record(original, `style:${Date.now()}`, label)
+          history.endGesture()
+          labels()
+        }
+      } else get().previewVoice(original)
+      set({ styling: false })
+    },
+
     applyVoice(next, label) {
       const voice = get().voice
-      if (!voice || !session || useLibrary.getState().job) return
+      if (!voice || !session || useLibrary.getState().job || get().styling) return
       const changes = voiceChanges(voice, next)
       if (!changes.length) return
       history.record(voice, `apply:${label}`, label)

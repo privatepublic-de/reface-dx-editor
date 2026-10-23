@@ -5,9 +5,10 @@ import { Keyboard } from './Keyboard'
 import { LibraryPanel } from './Library'
 import { SettingsDialog } from './SettingsDialog'
 import { StoreButton } from './StoreButton'
-import { InitButton, StyleMenu } from './StyleMenu'
+import { InitButton, StyleMenu, StyleSheet } from './StyleMenu'
 import { Panel } from './Panel'
 import { isOnline, useEditor, type Status } from './store'
+import { useStyle } from './styleStore'
 import { usePopover } from './usePopover'
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform)
@@ -25,16 +26,44 @@ export function App() {
   useUndoKeys()
   useAltKey()
   useResyncOnFocus()
+  const styling = useStyle((s) => !!s.original)
+  useStyleLayout(styling)
   return (
     <>
       <ConnectionBar />
-      <main>
+      <main className={styling ? 'main--styling' : undefined}>
         <MainView />
         <Keyboard />
         <LibraryPanel />
       </main>
+      {styling && <StyleSheet />}
     </>
   )
+}
+
+/** While the style editor is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
+ *  the bottom, and the sheet fills the space between the bar and the keyboard (their heights as CSS variables). */
+function useStyleLayout(styling: boolean) {
+  useEffect(() => {
+    const locked = ['.bar', '.stage', '.library'].flatMap((q) => [...document.querySelectorAll(q)])
+    locked.forEach((el) => el.toggleAttribute('inert', styling))
+    if (!styling) return
+    const root = document.documentElement
+    const measure = () => {
+      root.style.setProperty('--bar-h', `${document.querySelector('.bar')?.getBoundingClientRect().height ?? 0}px`)
+      root.style.setProperty('--keys-h', `${document.querySelector('.keys')?.getBoundingClientRect().height ?? 0}px`)
+    }
+    measure()
+    const watch = new ResizeObserver(measure)
+    for (const q of ['.bar', '.keys']) {
+      const el = document.querySelector(q)
+      if (el) watch.observe(el)
+    }
+    return () => {
+      watch.disconnect()
+      locked.forEach((el) => el.removeAttribute('inert'))
+    }
+  }, [styling])
 }
 
 /** Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z redoes, and Ctrl+Y off the Mac (where Cmd+Y isn't redo); not while typing in a field. */
@@ -79,7 +108,7 @@ function useResyncOnFocus() {
   useEffect(() => {
     const onVisible = () => {
       const s = useEditor.getState()
-      if (document.visibilityState === 'visible' && s.status === 'connected' && !s.reading) void s.resync()
+      if (document.visibilityState === 'visible' && s.status === 'connected' && !s.reading && !s.styling) void s.resync()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)

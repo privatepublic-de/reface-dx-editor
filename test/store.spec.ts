@@ -298,3 +298,52 @@ describe('linked envelopes', () => {
     expect(l2(2)).toBe(op3)
   })
 })
+
+describe('the style editor session', () => {
+  const voiceBytes = (v: { common: Uint8Array; ops: Uint8Array[] }) => [...v.common, ...v.ops.flatMap((o) => [...o])]
+
+  it('plays previews at once without undo steps; Cancel sends the cached voice back', async () => {
+    await demo()
+    const original = s().beginStyle()!
+    expect(s().styling).toBe(true)
+    const preview = structuredClone(original)
+    preview.ops[1][0x12] = 12
+    preview.common[0x10] = 4
+    s().previewVoice(preview)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(s().fake!.edit.ops[1][0x12]).toBe(12)
+    expect(s().undoLabel).toBeNull()
+    s().undo() // locked while styling
+    expect(s().voice!.ops[1][0x12]).toBe(12)
+    s().endStyle(original, false, '')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(s().styling).toBe(false)
+    expect(voiceBytes(s().fake!.edit)).toEqual(voiceBytes(original))
+    expect(s().undoLabel).toBeNull()
+  })
+
+  it('Apply keeps what is heard as one undo step back to the cached voice', async () => {
+    await demo()
+    const original = s().beginStyle()!
+    for (const level of [20, 40, 60]) {
+      const v = structuredClone(original)
+      v.ops[2][0x12] = level
+      s().previewVoice(v)
+    }
+    await vi.advanceTimersByTimeAsync(100)
+    expect(s().fake!.edit.ops[2][0x12]).toBe(60) // only the latest counts
+    s().endStyle(original, true, 'Style “Test”')
+    expect(s().undoLabel).toBe('Style “Test”')
+    s().undo()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(voiceBytes(s().fake!.edit)).toEqual(voiceBytes(original))
+  })
+
+  it('another voice chosen on the DX ends the session', async () => {
+    await demo()
+    s().beginStyle()
+    s().fake!.selectAtPanel(4)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(s().styling).toBe(false)
+  })
+})

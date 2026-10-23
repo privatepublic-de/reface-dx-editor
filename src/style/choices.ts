@@ -31,6 +31,17 @@ export const SHAPE_HINTS: Record<Shape, string> = {
   reverse: 'Swells up, then stops', gate: 'Organ: full level while held',
 }
 
+/** The DX's part mode (common 0D: poly, mono-full, mono-legato). */
+export const MODES = ['poly', 'mono', 'legato'] as const
+export type Mode = (typeof MODES)[number]
+export const MODE_LABELS: Record<Mode, string> = { poly: 'Poly', mono: 'Mono', legato: 'Legato' }
+export const MODE_HINTS: Record<Mode, string> = {
+  poly: 'Chords: every key its own note',
+  mono: 'One note at a time; every note starts its envelopes again',
+  legato: 'One note at a time; notes played joined glide on without starting the envelopes again',
+}
+export const MODE_BYTE: Record<Mode, number> = { poly: 0, mono: 1, legato: 2 }
+
 export const SPACES = ['dry', 'ensemble', 'room', 'hall', 'echo'] as const
 export type Space = (typeof SPACES)[number]
 export const SPACE_LABELS: Record<Space, string> = { dry: 'Dry', ensemble: 'Ensemble', room: 'Room', hall: 'Hall', echo: 'Echo' }
@@ -51,6 +62,8 @@ export interface StyleChoices {
   /** 0 … 1 */
   evolving: number
   expressive: number
+  /** null: the family's own (or the voice's) */
+  mode: Mode | null
   /** 0 … 1: the distortion effect, and some square feedback */
   drive: number
   /** null: from the family and characters */
@@ -59,9 +72,9 @@ export interface StyleChoices {
 }
 
 export const NO_STYLE: StyleChoices = {
-  family: null, characters: {}, brightness: 0, treble: 0, shape: null, length: 0, evolving: 0, expressive: 0, drive: 0, space: null, keepFx: false,
+  family: null, characters: {}, brightness: 0, treble: 0, shape: null, length: 0, evolving: 0, expressive: 0, mode: null, drive: 0, space: null, keepFx: false,
 }
 
 /** Whether anything is chosen at all (nothing: Init is the plain VOICE INIT). */
 export const isEmpty = (c: StyleChoices) =>
-  !c.family && !Object.values(c.characters).some((a) => a) && !c.brightness && !c.treble && !c.shape && !c.length && !c.evolving && !c.expressive && !c.drive && !c.space
+  !c.family && !Object.values(c.characters).some((a) => a) && !c.brightness && !c.treble && !c.shape && !c.length && !c.evolving && !c.expressive && !c.drive && !c.mode && !c.space

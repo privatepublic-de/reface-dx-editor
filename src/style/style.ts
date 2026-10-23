@@ -5,7 +5,7 @@ import { COMMON_PARAMS } from '../params/common'
 import { initVoice } from '../params/init'
 import { OPERATOR_PARAMS } from '../params/operator'
 import { cloneVoice, setVoiceName, type Voice } from '../sysex/codec'
-import { CHARACTERS, FAMILIES, isEmpty, type Character, type Family, type Space, type StyleChoices } from './choices'
+import { CHARACTERS, FAMILIES, isEmpty, MODE_BYTE, type Character, type Family, type Space, type StyleChoices } from './choices'
 import { rng as makeRng, type Rng } from './random'
 import { applyShape, applyTransients } from './shapes'
 import { buildTemplate, TEMPLATES, transients } from './templates'
@@ -45,7 +45,14 @@ function build(c: StyleChoices, family: Family | null, rng: Rng, spread: number)
   const length = c.length + (c.length ? 0 : t?.length ?? 0)
   const space = c.space ?? t?.space ?? (Object.values(c.characters).some((a) => a) || c.drive ? 'dry' : null)
   transform(v, c, rng, length, space)
+  applyMode(v, c)
   setVoiceName(v, styleName(c, family))
+  return v
+}
+
+/** A chosen play mode is set outright: it's not a sound to blend towards. */
+function applyMode(v: Voice, c: StyleChoices) {
+  if (c.mode) v.common[0x0d] = MODE_BYTE[c.mode]
   return v
 }
 
@@ -61,6 +68,28 @@ export function styleInit(c: StyleChoices, seed: number, current?: Voice, variat
   if (isEmpty(c)) return keepEffects(cloneVoice(initVoice()), c, current)
   const rng = makeRng(seed)
   return keepEffects(build(c, familyOf(c, rng), rng, spreadOf(variation)), c, current)
+}
+
+/** Where the style editor starts from: a new voice in the style, or the voice you had, morphed towards it. */
+export type Start = 'new' | 'mine'
+
+export interface Preview {
+  start: Start
+  /** the style variation: 0 typical … 1 wild */
+  variation: number
+  /** with 'mine': 0 the voice as it was … 1 the style */
+  morph: number
+  /** random changes on top, 0–100 % */
+  mutate: number
+}
+
+/** What the style editor plays: everything from the cached `original`, so moving a slider back goes back.
+ *  The morph uses one fixed step seed, so a switch flips at the same point every time (it's monotone). */
+export function stylePreview(original: Voice, c: StyleChoices, seed: number, p: Preview): Voice {
+  let v: Voice
+  if (p.start === 'new') v = styleInit(c, seed, original, p.variation)
+  else v = isEmpty(c) || p.morph <= 0 ? cloneVoice(original) : styleAdjust(original, c, p.morph, seed, seed + 1, p.variation)
+  return applyMode(p.mutate > 0 ? mutate(v, p.mutate, seed + 2, c.keepFx) : v, c)
 }
 
 /** The bytes Adjust and Mutate never blend: a halfway value is another sound. Coarse and fine go together. */

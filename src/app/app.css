@@ -125,7 +125,7 @@ main { padding: 14px 16px 40px; }
 }
 /* ---- the effects: a chain of two pedals, FM → 1 → 2 → out ---- */
 .fx-chain { display: flex; align-items: center; gap: 6px; }
-.fx-chain__end { font: 600 12px var(--font-narrow); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+.fx-chain__end { font: 600 12px var(--font-narrow); letter-spacing: .06em; color: var(--ink-dim); }
 /* the arrows are empty: a width (not only a flex basis), or some engines count them as nothing when sizing the box */
 .fx-chain__arrow { flex: none; width: 14px; height: 2px; background: var(--control-edge); position: relative; }
 .fx-chain__arrow::after { content: ''; position: absolute; right: -1px; top: -3px; border: 4px solid transparent; border-left: 5px solid var(--control-edge); border-right: 0; }
@@ -204,6 +204,8 @@ main { padding: 14px 16px 40px; }
 .knob__dial .control__value, .knob__dial .control__input { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%);
   min-width: 0; padding: 0 3px; font-size: 12px; line-height: 14px; white-space: nowrap; border-radius: 3px; }
 .knob__dial .control__value { background: #1d1511cc; }
+/* the value looks small but takes a click over a finger-sized area, mostly below the dial so drags still start on it */
+.knob__dial .control__value::before { content: ''; position: absolute; inset: -3px -4px -6px; }
 .knob__dial .control__input { width: 4.2em; z-index: 2; }
 .knob__svg { width: 48px; height: 48px; cursor: ns-resize; touch-action: none; overflow: visible; }
 .knob--small .knob__svg { width: 34px; height: 34px; }
@@ -357,8 +359,7 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .voice-row__rename { width: 9.5em; font: 500 14px var(--font-narrow); color: var(--screen-ink); background: var(--screen); border: 1px solid var(--focus); border-radius: 3px; padding: 2px 6px; }
 .voice-row__source { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .voice-row__problem { color: var(--warn); font-weight: 600; cursor: help; }
-.voice-row__tools { display: flex; gap: 4px; opacity: .55; }
-.voice-row:hover .voice-row__tools, .voice-row:focus-within .voice-row__tools { opacity: 1; }
+.voice-row__tools { display: flex; gap: 4px; }
 .voice-row__tools button { padding: 1px 7px; font-size: 12px; }
 
 /* ---- DX settings ---- */

@@ -134,7 +134,7 @@ function VoiceBox() {
         <P param={commonParam('portamento')} address={common(0x0e)} title="Porta" />
       </div>
       <div className="group-box__controls">
-        <S param={commonParam('partMode')} address={common(0x0d)} steps={['poly', 'mono full', 'mono legato']} />
+        <S param={commonParam('partMode')} address={common(0x0d)} />
       </div>
     </section>
   )
@@ -150,7 +150,7 @@ function LfoBox() {
       <div className="group-box__controls">
         <P param={commonParam('lfoSpeed')} address={common(0x12)} title="Speed" context="LFO" />
         <P param={commonParam('lfoDelay')} address={common(0x13)} title="Delay" context="LFO" />
-        <P param={commonParam('lfoPmd')} address={common(0x14)} title="Pitch mod" context="LFO" />
+        <P param={commonParam('lfoPmd')} address={common(0x14)} title="Pitch depth" context="LFO" />
       </div>
     </section>
   )
@@ -172,7 +172,7 @@ function PitchEgBox() {
       <div className="group-box__controls group-box__controls--eg">
         {[1, 2, 3, 4].map((n) => <P key={n} param={commonParam(`pegLevel${n}`)} address={common(0x18 + n)} title={`L${n}`} context="Pitch EG" small />)}
       </div>
-      <p className="note">±48 = ±4 octaves. Each operator’s Pitch EG switch says whether it follows.</p>
+      <p className="note">Levels: ±48 is ±4 octaves. Each operator’s Pitch EG switch says whether it follows.</p>
     </section>
   )
 }
@@ -195,8 +195,6 @@ function EffectsBox() {
   )
 }
 
-const EFFECT_NAMES = ['Thru', 'Distortion', 'Touch wah', 'Chorus', 'Flanger', 'Phaser', 'Delay', 'Reverb'] as const
-
 /** One effect as a pedal: its type on a small screen (‹ › step, the wheel steps, a click lists all), its two knobs. */
 function Pedal({ n, at }: { n: 1 | 2; at: number }) {
   const type = useEditor((s) => s.voice?.common[at] ?? 0)
@@ -217,7 +215,7 @@ function Pedal({ n, at }: { n: 1 | 2; at: number }) {
       <div ref={screen} className={`pedal__screen${flash ? ' control--touched' : ''}`}>
         <button type="button" onClick={() => step(-1)} aria-label={`Effect ${n}: previous type`}>‹</button>
         <select value={type} onChange={(e) => setValue(common(at), Number(e.target.value))} aria-label={`Effect ${n} type`}>
-          {EFFECT_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+          {EFFECT_TYPES.map((name, i) => <option key={name} value={i}>{name}</option>)}
         </select>
         <button type="button" onClick={() => step(1)} aria-label={`Effect ${n}: next type`}>›</button>
       </div>
@@ -357,11 +355,11 @@ function KscSection({ op }: { op: number }) {
     <>
       <KscGraph label={`OP${op + 1} keyboard scaling`} left={left} right={right} />
       <div className="group-box__controls ksc-controls">
-        <Knob param={KSC_DEPTH} title="L depth" context={ctx} value={left.depth} baseline={b && kscSide(b[0x0a], b[0x0c]).depth} defaultValue={0} flash={flashL} small
+        <Knob param={KSC_DEPTH} title="L depth" context={ctx} value={left.depth} baseline={b && kscSide(b[0x0a], b[0x0c]).depth} defaultValue={0} flash={flashL}
           onChange={(v) => set('L', { ...left, depth: v }, 'depth')} onGesture={gesture} />
         <Switch label="L curve" context={ctx} steps={['LIN', 'EXP']} value={left.exp ? 1 : 0} flash={flashL} onChange={(v) => set('L', { ...left, exp: v === 1 }, 'curve')} />
         <Switch label="R curve" context={ctx} steps={['LIN', 'EXP']} value={right.exp ? 1 : 0} flash={flashR} onChange={(v) => set('R', { ...right, exp: v === 1 }, 'curve')} />
-        <Knob param={KSC_DEPTH} title="R depth" context={ctx} value={right.depth} baseline={b && kscSide(b[0x0b], b[0x0d]).depth} defaultValue={0} flash={flashR} small
+        <Knob param={KSC_DEPTH} title="R depth" context={ctx} value={right.depth} baseline={b && kscSide(b[0x0b], b[0x0d]).depth} defaultValue={0} flash={flashR}
           onChange={(v) => set('R', { ...right, depth: v }, 'depth')} onGesture={gesture} />
       </div>
       <div className="group-box__controls">

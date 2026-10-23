@@ -22,7 +22,7 @@ const egLevel = (n: number): Param => ({ offset: 0x18 + n, key: `pegLevel${n}`, 
 
 export const COMMON_PARAMS: readonly Param[] = [
   { offset: 0x0c, key: 'transpose', label: 'Transpose', min: 0x28, max: 0x58, center: 0x40 },
-  { offset: 0x0d, key: 'partMode', label: 'Part mode', min: 0, max: 2, labels: ['poly', 'mono-full', 'mono-legato'] },
+  { offset: 0x0d, key: 'partMode', label: 'Part mode', min: 0, max: 2, labels: ['poly', 'mono full', 'mono legato'] },
   { offset: 0x0e, key: 'portamento', label: 'Portamento', min: 0, max: 127 },
   { offset: 0x0f, key: 'pbRange', label: 'PB range', min: 0x28, max: 0x58, center: 0x40 },
   { offset: 0x10, key: 'algorithm', label: 'Algorithm', min: 0, max: 11, base: 1 },

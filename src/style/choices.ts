@@ -31,10 +31,10 @@ export const SHAPE_HINTS: Record<Shape, string> = {
   reverse: 'Swells up, then stops', gate: 'Organ: full level while held',
 }
 
-/** The DX's part mode (common 0D: poly, mono-full, mono-legato). */
+/** The DX's part mode (common 0D: poly, mono full, mono legato). */
 export const MODES = ['poly', 'mono', 'legato'] as const
 export type Mode = (typeof MODES)[number]
-export const MODE_LABELS: Record<Mode, string> = { poly: 'Poly', mono: 'Mono', legato: 'Legato' }
+export const MODE_LABELS: Record<Mode, string> = { poly: 'Poly', mono: 'Mono full', legato: 'Mono legato' }
 export const MODE_HINTS: Record<Mode, string> = {
   poly: 'Chords: every key its own note',
   mono: 'One note at a time; every note starts its envelopes again',
@@ -45,7 +45,7 @@ export const MODE_BYTE: Record<Mode, number> = { poly: 0, mono: 1, legato: 2 }
 /** The DX's two effect slots: Colour (slot 1) and Space (slot 2). Together they offer all seven effects. */
 export const COLOURS = ['clean', 'drive', 'wah', 'chorus', 'flanger', 'phaser'] as const
 export type Colour = (typeof COLOURS)[number]
-export const COLOUR_LABELS: Record<Colour, string> = { clean: 'Clean', drive: 'Drive', wah: 'Wah', chorus: 'Chorus', flanger: 'Flanger', phaser: 'Phaser' }
+export const COLOUR_LABELS: Record<Colour, string> = { clean: 'Clean', drive: 'Distortion', wah: 'Touch wah', chorus: 'Chorus', flanger: 'Flanger', phaser: 'Phaser' }
 
 export const SPACES = ['dry', 'room', 'hall', 'echo'] as const
 export type Space = (typeof SPACES)[number]

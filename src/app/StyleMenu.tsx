@@ -115,7 +115,7 @@ export function StyleSheet() {
             <div className="chips chips--6">
               {COLOURS.map((k) => (
                 <Chip key={k} on={c.colour === k} implied={!c.colour && colourOf(c) === k} onClick={() => set({ colour: c.colour === k ? null : k })}
-                  title={k === 'drive' ? 'Distortion, and square feedback on a modulator' : undefined}>{COLOUR_LABELS[k]}</Chip>
+                  title={k === 'drive' ? 'With square feedback on a modulator' : undefined}>{COLOUR_LABELS[k]}</Chip>
               ))}
             </div>
           </Group>

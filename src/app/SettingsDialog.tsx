@@ -78,7 +78,7 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
           <div className="settings-row">
             <Knob param={TUNE} title="Master tune" value={tuneRaw} defaultValue={1024} onGesture={noGesture}
               onChange={(raw) => setSystemValue(0x02, masterTuneBytes((raw - 1024) / 10))} />
-            <Knob param={systemParam('masterTranspose')} title="Transpose" value={at(0x07)} defaultValue={0x40} onGesture={noGesture}
+            <Knob param={systemParam('masterTranspose')} title="Master transpose" value={at(0x07)} defaultValue={0x40} onGesture={noGesture}
               onChange={(v) => setSystemValue(0x07, v)} />
             <Knob param={TEMPO} title="Tempo" value={tempoBpm(system)} defaultValue={120} onGesture={noGesture}
               onChange={(v) => setSystemValue(0x08, tempoBytes(v))} />

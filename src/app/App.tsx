@@ -165,10 +165,10 @@ function VoiceTitle() {
   const memory = useLibrary((s) => s.memory)
   return (
     <div className="voice-title">
-      <label className="voice-title__where" title="Selects a stored voice on the DX (your edits to this one are dropped there)">
+      <label className="voice-title__where" title={`${program === null ? 'The DX doesn’t say where this voice came from until a location is selected. ' : ''}Selects a stored voice on the DX (your edits to this one are dropped there)`}>
         <span className="visually-hidden">Location</span>
         <select value={program ?? ''} disabled={reading} onChange={(e) => void selectProgram(Number(e.target.value))}>
-          {program === null && <option value="">–</option>}
+          {program === null && <option value="">?</option>}
           {Array.from({ length: 32 }, (_, p) => (
             // the name the DX's memory was last seen to hold there (Read all, or selecting it), when it's known
             <option key={p} value={p}>{memory[p] ? `${locationName(p)}\u2003${voiceName(memory[p]!.voice)}` : locationName(p)}</option>

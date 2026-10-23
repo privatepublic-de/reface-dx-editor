@@ -3,6 +3,7 @@ import { diffVoices, locationName, voiceName } from '../sysex/codec'
 import { AboutDialog } from './AboutDialog'
 import { Keyboard } from './Keyboard'
 import { LibraryPanel } from './Library'
+import { useLibrary } from './libraryStore'
 import { SettingsDialog } from './SettingsDialog'
 import { StoreButton } from './StoreButton'
 import { InitButton, StyleMenu, StyleSheet } from './StyleMenu'
@@ -161,6 +162,7 @@ function ConnectionBar() {
 function VoiceTitle() {
   const { voice, baseline, program, reading, selectProgram } = useEditor()
   const edited = useMemo(() => !!voice && !!baseline && diffVoices(baseline, voice).length > 0, [voice, baseline])
+  const memory = useLibrary((s) => s.memory)
   return (
     <div className="voice-title">
       <label className="voice-title__where" title="Selects a stored voice on the DX (your edits to this one are dropped there)">
@@ -168,7 +170,8 @@ function VoiceTitle() {
         <select value={program ?? ''} disabled={reading} onChange={(e) => void selectProgram(Number(e.target.value))}>
           {program === null && <option value="">–</option>}
           {Array.from({ length: 32 }, (_, p) => (
-            <option key={p} value={p}>{locationName(p)}</option>
+            // the name the DX's memory was last seen to hold there (Read all, or selecting it), when it's known
+            <option key={p} value={p}>{memory[p] ? `${locationName(p)}\u2003${voiceName(memory[p]!.voice)}` : locationName(p)}</option>
           ))}
         </select>
       </label>

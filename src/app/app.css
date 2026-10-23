@@ -56,6 +56,8 @@ select { max-width: 14em; }
 /* the voice: where it is stored, its name as on the DX's screen, and "Edited" (it always takes its space, so nothing shifts) */
 .voice-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .voice-title__where select { height: var(--ui-bar-ctl); font: 600 14px var(--font-narrow); font-variant-numeric: tabular-nums; }
+/* closed, it shows the location alone (the name is on the screen beside it); the list shows the names too */
+.voice-title__where select { width: 4.6em; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .voice-title__name { padding: 3px 10px; background: var(--screen-lit); color: var(--screen-ink); border-radius: 3px; font: 500 17px var(--font-narrow);
   letter-spacing: .06em; white-space: pre; min-width: 7.5em; text-shadow: 0 0 6px var(--screen-glow); }
 .edited { font: 600 12px var(--font-narrow); letter-spacing: .03em; color: var(--accent); border: 1px solid #eef3ff66; border-radius: 3px; padding: 0 5px; }

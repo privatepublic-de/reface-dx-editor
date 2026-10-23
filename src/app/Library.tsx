@@ -95,6 +95,9 @@ function Voices() {
             title="Keeps the voice as it is in the editor now">
             Keep this voice
           </button>
+          <button onClick={() => voice && download(fileName(voice), exportSyx([voice]))} disabled={!voice} title="Saves the voice as it is in the editor now as a .syx file">
+            Export this voice
+          </button>
           <button disabled={!memory.some(Boolean)} title="Keeps every voice read from the DX’s memory"
             onClick={() => keepAll(memory.flatMap((m, p) => (m ? [{ voice: m.voice, source: `${locationName(p)} on the DX` }] : [])))}>
             Keep DX memory

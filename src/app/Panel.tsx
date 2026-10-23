@@ -1,7 +1,7 @@
 // The voice on one screen: the algorithm and the common settings on the left, the four operators side by side
 // (each with its frequency, level, feedback, envelope, LFO depths and keyboard scaling), as the DX's FM section
 // and Edit mode pages hold them (Reference Manual pp. 3–10).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { addressKey } from '../params/address'
 import { isCarrier, modulates } from '../params/algorithms'
 import { commonParam, EFFECT_PARAM_LABELS, EFFECT_TYPES, NAME_LENGTH } from '../params/common'
@@ -14,6 +14,7 @@ import { voiceName } from '../sysex/codec'
 import { AlgorithmPicker, AlgorithmView } from './AlgorithmView'
 import { Knob } from './controls/Knob'
 import { Switch } from './controls/Switch'
+import { onOwnWheel } from './controls/wheel'
 import { EgGraph } from './EgGraph'
 import { KscGraph } from './KscGraph'
 import { useEditor } from './store'
@@ -24,13 +25,13 @@ const opAt = (op: number, offset: number): Address => [0x31, op, offset]
 
 /** A knob for the param at `address`, wired to the store: value, baseline tick, panel highlight, undo gestures.
  *  `onSet` replaces the plain edit (the envelope knobs go through the link). */
-function P({ param, address, title, display, small, onSet }: { param: Param; address: Address; title?: string; display?: (v: number) => string; small?: boolean; onSet?(v: number): void }) {
+function P({ param, address, title, context, display, small, onSet }: { param: Param; address: Address; title?: string; context?: string; display?: (v: number) => string; small?: boolean; onSet?(v: number): void }) {
   const value = useEditor((s) => valueAt(s.voice, address))
   const baseline = useEditor((s) => valueAt(s.baseline, address))
   const flash = useEditor((s) => s.touched.includes(addressKey(address)))
   const { setValue, beginGesture, endGesture } = useEditor.getState()
   return (
-    <Knob param={param} title={title} value={value} baseline={baseline} defaultValue={valueAt(INIT, address)} display={display} flash={flash} small={small}
+    <Knob param={param} title={title} context={context} value={value} baseline={baseline} defaultValue={valueAt(INIT, address)} display={display} flash={flash} small={small}
       onChange={(v) => (onSet ? onSet(v) : setValue(address, v))} onGesture={(on) => (on ? beginGesture() : endGesture())} />
   )
 }
@@ -41,11 +42,11 @@ function valueAt(v: { common: Uint8Array; ops: Uint8Array[] } | null, a: Address
 }
 
 /** A switch for the param at `address`. */
-function S({ param, address, steps, toggle, hideLabel, title }: { param: Param; address: Address; steps?: readonly string[]; toggle?: boolean; hideLabel?: boolean; title?: string }) {
+function S({ param, address, steps, toggle, hideLabel, title, context }: { param: Param; address: Address; steps?: readonly string[]; toggle?: boolean; hideLabel?: boolean; title?: string; context?: string }) {
   const value = useEditor((s) => valueAt(s.voice, address))
   const flash = useEditor((s) => s.touched.includes(addressKey(address)))
   const setValue = useEditor((s) => s.setValue)
-  return <Switch label={title ?? param.label} steps={steps ?? param.labels ?? []} value={value} min={param.min} toggle={toggle} hideLabel={hideLabel} flash={flash} onChange={(v) => setValue(address, v)} />
+  return <Switch label={title ?? param.label} steps={steps ?? param.labels ?? []} value={value} min={param.min} toggle={toggle} hideLabel={hideLabel} context={context} flash={flash} onChange={(v) => setValue(address, v)} />
 }
 
 /** The width from which the operators stand in one row beside the side column (app.css: the 1500 px breakpoint). */
@@ -147,9 +148,9 @@ function LfoBox() {
         <S param={commonParam('lfoWave')} address={common(0x11)} steps={['sin', 'tri', 'saw↑', 'saw↓', 'sq', 'S&H8', 'S&H']} hideLabel />
       </div>
       <div className="group-box__controls">
-        <P param={commonParam('lfoSpeed')} address={common(0x12)} title="Speed" />
-        <P param={commonParam('lfoDelay')} address={common(0x13)} title="Delay" />
-        <P param={commonParam('lfoPmd')} address={common(0x14)} title="Pitch mod" />
+        <P param={commonParam('lfoSpeed')} address={common(0x12)} title="Speed" context="LFO" />
+        <P param={commonParam('lfoDelay')} address={common(0x13)} title="Delay" context="LFO" />
+        <P param={commonParam('lfoPmd')} address={common(0x14)} title="Pitch mod" context="LFO" />
       </div>
     </section>
   )
@@ -166,10 +167,10 @@ function PitchEgBox() {
       <EgGraph label="Pitch EG" rates={rates} levels={levels} levelMin={0x10} levelMax={0x70}
         onChange={(kind, i, v) => setValue(common((kind === 'rate' ? 0x15 : 0x19) + i), v)} onGesture={(on) => (on ? beginGesture() : endGesture())} />
       <div className="group-box__controls group-box__controls--eg">
-        {[1, 2, 3, 4].map((n) => <P key={n} param={commonParam(`pegRate${n}`)} address={common(0x14 + n)} title={`R${n}`} small />)}
+        {[1, 2, 3, 4].map((n) => <P key={n} param={commonParam(`pegRate${n}`)} address={common(0x14 + n)} title={`R${n}`} context="Pitch EG" small />)}
       </div>
       <div className="group-box__controls group-box__controls--eg">
-        {[1, 2, 3, 4].map((n) => <P key={n} param={commonParam(`pegLevel${n}`)} address={common(0x18 + n)} title={`L${n}`} small />)}
+        {[1, 2, 3, 4].map((n) => <P key={n} param={commonParam(`pegLevel${n}`)} address={common(0x18 + n)} title={`L${n}`} context="Pitch EG" small />)}
       </div>
       <p className="note">±48 = ±4 octaves. Each operator’s Pitch EG switch says whether it follows.</p>
     </section>
@@ -203,13 +204,17 @@ function Pedal({ n, at }: { n: 1 | 2; at: number }) {
   const setValue = useEditor((s) => s.setValue)
   const [l1, l2] = EFFECT_PARAM_LABELS[type]
   const step = (d: number) => setValue(common(at), (type + d + EFFECT_TYPES.length) % EFFECT_TYPES.length)
+  const screen = useRef<HTMLDivElement>(null)
+  const latestStep = useRef(step)
+  latestStep.current = step
+  // The wheel steps the type, but only a wheel gesture that started on the screen: a page scroll passes over.
+  useEffect(() => onOwnWheel(screen.current!, (e) => {
+    e.preventDefault()
+    if (Math.abs(e.deltaY) >= 4) latestStep.current(Math.sign(e.deltaY))
+  }), [])
   return (
     <div className={`pedal${type === 0 ? ' pedal--thru' : ''}`} role="group" aria-label={`Effect ${n}`}>
-      <div className={`pedal__screen${flash ? ' control--touched' : ''}`}
-        onWheel={(e) => {
-          if (Math.abs(e.deltaY) < 4) return
-          step(Math.sign(e.deltaY))
-        }}>
+      <div ref={screen} className={`pedal__screen${flash ? ' control--touched' : ''}`}>
         <button type="button" onClick={() => step(-1)} aria-label={`Effect ${n}: previous type`}>‹</button>
         <select value={type} onChange={(e) => setValue(common(at), Number(e.target.value))} aria-label={`Effect ${n} type`}>
           {EFFECT_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}
@@ -217,8 +222,8 @@ function Pedal({ n, at }: { n: 1 | 2; at: number }) {
         <button type="button" onClick={() => step(1)} aria-label={`Effect ${n}: next type`}>›</button>
       </div>
       <div className="pedal__knobs">
-        <P param={commonParam(`fx${n}Param1`)} address={common(at + 1)} title={l1} small />
-        <P param={commonParam(`fx${n}Param2`)} address={common(at + 2)} title={l2} small />
+        <P param={commonParam(`fx${n}Param1`)} address={common(at + 1)} title={l1} context={`Effect ${n}`} small />
+        <P param={commonParam(`fx${n}Param2`)} address={common(at + 2)} title={l2} context={`Effect ${n}`} small />
       </div>
     </div>
   )
@@ -258,6 +263,7 @@ function OperatorStrip({ op }: { op: number }) {
   const levels = [0, 1, 2, 3].map((i) => o[0x05 + i])
   const ghosts = [0, 1, 2, 3].filter((i) => i !== op).map((i) => ({ rates: [0, 1, 2, 3].map((k) => voice.ops[i][0x01 + k]), levels: [0, 1, 2, 3].map((k) => voice.ops[i][0x05 + k]) }))
   const gesture = (active: boolean) => (active ? beginGesture() : endGesture())
+  const ctx = `OP${op + 1}`
   return (
     <section className={`op${focused ? ' op--focus' : ''}${on ? '' : ' op--off'}`} aria-label={`Operator ${op + 1}`} onPointerDown={() => focusOperator(op)}>
       <header className="op__head">
@@ -265,22 +271,22 @@ function OperatorStrip({ op }: { op: number }) {
         <span className="op__role" title={carrier ? 'A carrier: you hear it; Level is its volume' : `A modulator of OP${targets.join(', OP')}: Level is how much it modulates`}>
           {carrier ? 'out' : `→ ${targets.join(', ')}`}
         </span>
-        <S param={operatorParam('on')} address={opAt(op, 0x00)} toggle title="On" />
+        <S param={operatorParam('on')} address={opAt(op, 0x00)} toggle title="On" context={ctx} />
       </header>
       <div className="op__freq-row">
-        <S param={operatorParam('freqMode')} address={opAt(op, 0x15)} hideLabel />
+        <S param={operatorParam('freqMode')} address={opAt(op, 0x15)} hideLabel context={ctx} />
         <div className="op__freq" title="As the DX shows it">{describeFrequency(o[0x15], o[0x16], o[0x17])}</div>
       </div>
       <div className="group-box__controls">
-        <P param={operatorParam('coarse')} address={opAt(op, 0x16)} />
-        <P param={operatorParam('fine')} address={opAt(op, 0x17)} />
-        <P param={operatorParam('detune')} address={opAt(op, 0x18)} />
+        <P param={operatorParam('coarse')} address={opAt(op, 0x16)} context={ctx} />
+        <P param={operatorParam('fine')} address={opAt(op, 0x17)} context={ctx} />
+        <P param={operatorParam('detune')} address={opAt(op, 0x18)} context={ctx} />
       </div>
       <div className="group-box__controls">
-        <P param={operatorParam('level')} address={opAt(op, 0x12)} title={carrier ? 'Volume' : 'Mod depth'} />
-        <Knob param={FEEDBACK} value={fb} defaultValue={0} flash={flashFb} onGesture={gesture} ends={[SQUARE_GLYPH, SAW_GLYPH]}
+        <P param={operatorParam('level')} address={opAt(op, 0x12)} title={carrier ? 'Volume' : 'Mod depth'} context={ctx} />
+        <Knob param={FEEDBACK} context={ctx} value={fb} defaultValue={0} flash={flashFb} onGesture={gesture} ends={[SQUARE_GLYPH, SAW_GLYPH]}
           onChange={(v) => setValues([[opAt(op, 0x13), [Math.abs(v)]], ...(v === 0 ? [] : [[opAt(op, 0x14), [v < 0 ? 1 : 0]] as [Address, number[]]])], `OP${op + 1} Feedback`)} />
-        <P param={operatorParam('velocity')} address={opAt(op, 0x11)} title="Velocity" />
+        <P param={operatorParam('velocity')} address={opAt(op, 0x11)} title="Velocity" context={ctx} />
       </div>
       <div className="op__section">
         <h3 className="op__eg-head">
@@ -289,18 +295,18 @@ function OperatorStrip({ op }: { op: number }) {
         </h3>
         <EgGraph label={`OP${op + 1} EG`} rates={rates} levels={levels} ghosts={ghosts} onChange={(kind, i, v) => setEgValue(op, kind, i, v)} onGesture={gesture} />
         <div className="group-box__controls group-box__controls--eg">
-          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egRate${i + 1}`)} address={opAt(op, 1 + i)} title={`R${i + 1}`} small onSet={(v) => setEgValue(op, 'rate', i, v)} />)}
+          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egRate${i + 1}`)} address={opAt(op, 1 + i)} title={`R${i + 1}`} context={`${ctx} EG`} small onSet={(v) => setEgValue(op, 'rate', i, v)} />)}
         </div>
         <div className="group-box__controls group-box__controls--eg">
-          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egLevel${i + 1}`)} address={opAt(op, 5 + i)} title={`L${i + 1}`} small onSet={(v) => setEgValue(op, 'level', i, v)} />)}
+          {[0, 1, 2, 3].map((i) => <P key={i} param={operatorParam(`egLevel${i + 1}`)} address={opAt(op, 5 + i)} title={`L${i + 1}`} context={`${ctx} EG`} small onSet={(v) => setEgValue(op, 'level', i, v)} />)}
         </div>
       </div>
       <div className="op__section">
         <h3>LFO and Pitch EG</h3>
         <div className="group-box__controls">
-          <P param={operatorParam('lfoAmd')} address={opAt(op, 0x0e)} title="Amp mod" />
-          <S param={operatorParam('lfoPmd')} address={opAt(op, 0x0f)} toggle title="Pitch mod" />
-          <S param={operatorParam('peg')} address={opAt(op, 0x10)} toggle title="Pitch EG" />
+          <P param={operatorParam('lfoAmd')} address={opAt(op, 0x0e)} title="Amp mod" context={ctx} />
+          <S param={operatorParam('lfoPmd')} address={opAt(op, 0x0f)} toggle title="Pitch mod" context={ctx} />
+          <S param={operatorParam('peg')} address={opAt(op, 0x10)} toggle title="Pitch EG" context={ctx} />
         </div>
       </div>
       <div className="op__section">
@@ -346,19 +352,20 @@ function KscSection({ op }: { op: number }) {
     setValues([[opAt(op, depthAt), [depth]], [opAt(op, curveAt), [curve]]], `OP${op + 1} KSC ${side} ${what}`)
   }
   const gesture = (active: boolean) => (active ? beginGesture() : endGesture())
+  const ctx = `OP${op + 1}`
   return (
     <>
       <KscGraph label={`OP${op + 1} keyboard scaling`} left={left} right={right} />
       <div className="group-box__controls ksc-controls">
-        <Knob param={KSC_DEPTH} title="L depth" value={left.depth} baseline={b && kscSide(b[0x0a], b[0x0c]).depth} defaultValue={0} flash={flashL} small
+        <Knob param={KSC_DEPTH} title="L depth" context={ctx} value={left.depth} baseline={b && kscSide(b[0x0a], b[0x0c]).depth} defaultValue={0} flash={flashL} small
           onChange={(v) => set('L', { ...left, depth: v }, 'depth')} onGesture={gesture} />
-        <Switch label="L curve" steps={['LIN', 'EXP']} value={left.exp ? 1 : 0} flash={flashL} onChange={(v) => set('L', { ...left, exp: v === 1 }, 'curve')} />
-        <Switch label="R curve" steps={['LIN', 'EXP']} value={right.exp ? 1 : 0} flash={flashR} onChange={(v) => set('R', { ...right, exp: v === 1 }, 'curve')} />
-        <Knob param={KSC_DEPTH} title="R depth" value={right.depth} baseline={b && kscSide(b[0x0b], b[0x0d]).depth} defaultValue={0} flash={flashR} small
+        <Switch label="L curve" context={ctx} steps={['LIN', 'EXP']} value={left.exp ? 1 : 0} flash={flashL} onChange={(v) => set('L', { ...left, exp: v === 1 }, 'curve')} />
+        <Switch label="R curve" context={ctx} steps={['LIN', 'EXP']} value={right.exp ? 1 : 0} flash={flashR} onChange={(v) => set('R', { ...right, exp: v === 1 }, 'curve')} />
+        <Knob param={KSC_DEPTH} title="R depth" context={ctx} value={right.depth} baseline={b && kscSide(b[0x0b], b[0x0d]).depth} defaultValue={0} flash={flashR} small
           onChange={(v) => set('R', { ...right, depth: v }, 'depth')} onGesture={gesture} />
       </div>
       <div className="group-box__controls">
-        <P param={operatorParam('rateScaling')} address={opAt(op, 0x09)} title="Rate scaling" />
+        <P param={operatorParam('rateScaling')} address={opAt(op, 0x09)} title="Rate scaling" context={ctx} />
       </div>
     </>
   )

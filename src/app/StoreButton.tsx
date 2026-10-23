@@ -1,11 +1,9 @@
 // Store… in the top bar: the DX stores only from its own panel (FINDINGS Q2, Q3), so this guides it. Choose where,
 // press STORE on the DX, then Check: the editor selects another location and the chosen one again, reads it, and
 // compares with the voice it sent (the name may have been changed on the DX's Store Name screen). Nothing in the
-// DX's memory changes from here; Export .syx saves the voice as a file instead.
+// DX's memory changes from here. Store always means the DX's memory: a .syx file is Export this voice, in the library.
 import { useState } from 'react'
-import { fileName, exportSyx } from '../library/library'
 import { locationName, voiceName } from '../sysex/codec'
-import { download } from './download'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
 import { usePopover } from './usePopover'
@@ -19,7 +17,7 @@ export function StoreButton() {
   return (
     <span className="popup-anchor" ref={anchor}>
       <button onClick={() => setOpen(!open)} aria-expanded={open} disabled={busy || (!ready && !open)}
-        title={busy ? 'Wait for Read all to finish' : 'Store the voice in one of the DX’s 32 locations (with STORE on the DX), or export it as a .syx file'}>
+        title={busy ? 'Wait for Read all to finish' : 'Store the voice in one of the DX’s 32 locations (with STORE on the DX)'}>
         Store…
       </button>
       {open && <StoreForm onClose={() => setOpen(false)} />}
@@ -61,7 +59,6 @@ function StoreForm({ onClose }: { onClose(): void }) {
               {target === null ? 'Store…' : `Replace ${where}…`}
             </button>
             <button type="button" onClick={onClose}>Cancel</button>
-            <button type="button" className="link popup__export" onClick={() => { download(fileName(voice), exportSyx([voice])); onClose() }}>Export .syx</button>
           </span>
         </>
       )}

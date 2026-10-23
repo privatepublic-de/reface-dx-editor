@@ -4,6 +4,7 @@
 // = the default, click the value (or Enter) to type. A bipolar value's zero holds a drag for a few pixels.
 import { useEffect, useRef, useState } from 'react'
 import { formatValue, parseValue, type Param } from '../../params/param'
+import { onOwnWheel } from './wheel'
 
 const SWEEP = 270
 const START = -135
@@ -23,6 +24,8 @@ export interface KnobProps {
   param: Param
   /** the visible label (the param's own label is long where the box already names the section) */
   title?: string
+  /** what the box says, for the tooltip and the accessible name: "OP2", "Pitch EG", "Effect 1" */
+  context?: string
   value: number
   /** what double-click and Delete set */
   defaultValue: number
@@ -40,7 +43,7 @@ export interface KnobProps {
   onGesture(active: boolean): void
 }
 
-export function Knob({ param: p, title, value, defaultValue, baseline = null, display, ends, flash, disabled, small, onChange, onGesture }: KnobProps) {
+export function Knob({ param: p, title, context, value, defaultValue, baseline = null, display, ends, flash, disabled, small, onChange, onGesture }: KnobProps) {
   const ref = useRef<SVGSVGElement>(null)
   const drag = useRef<{ y: number; start: number } | null>(null)
   const [typing, setTyping] = useState(false)
@@ -59,15 +62,13 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
   useEffect(() => {
     const node = ref.current
     if (!node) return
-    // React's wheel handler is passive and can't stop the page scrolling along; a native one can.
-    const onWheel = (e: WheelEvent) => {
+    // Only a wheel gesture that started on the knob turns it: a page scroll passing over goes on scrolling.
+    return onOwnWheel(node, (e) => {
       const l = latest.current
       if (l.disabled) return
       e.preventDefault()
       l.change(l.value + (e.deltaY < 0 ? 1 : -1))
-    }
-    node.addEventListener('wheel', onWheel, { passive: false })
-    return () => node.removeEventListener('wheel', onWheel)
+    })
   }, [p.min, p.max])
 
   const end = () => {
@@ -77,6 +78,8 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
   }
 
   const shown = display ? display(value) : formatValue(p, value)
+  // the label as shown, with the box it's in: the tooltip and screen readers name the knob you see
+  const name = `${context ? `${context} ` : ''}${title ?? p.label}`
   const moved = baseline !== null && baseline !== value
 
   return (
@@ -90,7 +93,7 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
         className="knob__svg"
         role="slider"
         tabIndex={disabled ? -1 : 0}
-        aria-label={p.label}
+        aria-label={name}
         aria-valuemin={p.min}
         aria-valuemax={p.max}
         aria-valuenow={value}
@@ -131,7 +134,7 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
           e.preventDefault()
         }}
       >
-        <title>{`${p.label}: ${shown}${moved ? ` (was ${display ? display(baseline!) : formatValue(p, baseline!)})` : ''}`}</title>
+        <title>{`${name}: ${shown}${moved ? ` (was ${display ? display(baseline!) : formatValue(p, baseline!)})` : ''}`}</title>
         <path d={arcPath(19, START, START + SWEEP)} className="knob__track" />
         <path d={arcPath(19, Math.min(from, at), Math.max(from, at))} className="knob__fill" />
         {moved && <KnobTick deg={angle(baseline!)} />}
@@ -147,6 +150,7 @@ export function Knob({ param: p, title, value, defaultValue, baseline = null, di
       {typing ? (
         <ValueInput
           param={p}
+          name={name}
           value={value}
           onDone={(v) => {
             setTyping(false)
@@ -172,7 +176,7 @@ const KnobTick = ({ deg }: { deg: number }) => {
 }
 
 /** Types a value in the units the knob's param shows. */
-function ValueInput({ param, value, onDone }: { param: Param; value: number; onDone(v: number | null): void }) {
+function ValueInput({ param, name, value, onDone }: { param: Param; name: string; value: number; onDone(v: number | null): void }) {
   const [text, setText] = useState(formatValue(param, value))
   const done = useRef(false)
   const finish = (v: number | null) => {
@@ -185,7 +189,7 @@ function ValueInput({ param, value, onDone }: { param: Param; value: number; onD
       className="control__input"
       autoFocus
       inputMode="numeric"
-      aria-label={`${param.label} value`}
+      aria-label={`${name} value`}
       value={text}
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setText(e.target.value)}

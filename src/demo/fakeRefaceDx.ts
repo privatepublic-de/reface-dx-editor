@@ -99,7 +99,7 @@ export class FakeRefaceDx implements MidiTransport {
     } else if (s.kind === 'parameterChange') {
       if (s.address[0] === 0x00 && s.address[1] === 0x00) {
         if (s.address[2] + s.data.length <= SIZE.system) this.system.set(s.data, s.address[2])
-      } else setVoiceValues(this.edit, s.address, s.data)
+      } else setVoiceValues(this.edit, s.address, s.data.slice(0, 1)) // the voice takes one byte per change, like the DX
     } else if (s.kind === 'bulk' && s.checksumOk) this.receiveBlock(s.address, s.data)
   }
 

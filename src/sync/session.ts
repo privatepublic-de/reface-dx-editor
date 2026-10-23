@@ -38,6 +38,14 @@ export interface Connected {
   voice: Voice
 }
 
+/** In the voice, a Parameter Change carries one byte: the DX takes the first of several and drops the rest (seen
+ *  with the name, 2026-10-23: only its first letter arrived). So the name goes as ten. SYSTEM's Master Tune and Tempo
+ *  do take theirs whole (Q11). */
+export function singleBytes(address: Address, data: number[]): [Address, number[]][] {
+  if (address[0] === 0x00 || data.length < 2) return [[address, data]]
+  return data.map((d, i) => [[address[0], address[1], address[2] + i], [d]])
+}
+
 export class Session {
   readonly requests: Requests
   readonly sender: ParamSender
@@ -98,7 +106,7 @@ export class Session {
 
   /** An edit: goes out as a Parameter Change (coalesced per parameter). */
   sendValue(address: Address, data: number[]) {
-    this.sender.push(address, data)
+    for (const [a, d] of singleBytes(address, data)) this.sender.push(a, d)
   }
 
   /** Many changes at once (Init, undo across many values), as Parameter Changes: up to BATCH_SIZE at once, more in
@@ -107,7 +115,7 @@ export class Session {
     const run = async () => {
       for (let i = 0; i < changes.length && !this.closed; i += BATCH_SIZE) {
         if (i) await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS))
-        for (const [a, d] of changes.slice(i, i + BATCH_SIZE)) this.sender.push(a, d)
+        for (const [a, d] of changes.slice(i, i + BATCH_SIZE)) for (const [b, e] of singleBytes(a, d)) this.sender.push(b, e)
       }
     }
     this.batches = this.batches.then(run, run)

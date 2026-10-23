@@ -347,3 +347,14 @@ describe('the style editor session', () => {
     expect(s().styling).toBe(false)
   })
 })
+
+describe('the name', () => {
+  it('arrives whole on the DX, which takes one byte per Parameter Change', async () => {
+    await demo()
+    const v = structuredClone(s().voice!)
+    v.common.set(Array.from('New Name  ', (c) => c.charCodeAt(0)), 0)
+    s().applyVoice(v, 'Rename')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(voiceName(s().fake!.edit)).toBe('New Name')
+  })
+})

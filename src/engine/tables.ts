@@ -44,8 +44,8 @@ const EG_LEVEL_DB: readonly [number, number][] = [
 export const egLevelDb = (level: number) => (level <= 0 ? SILENT_DB : lerp(EG_LEVEL_DB, level))
 
 /** Attack: seconds from 1 % to 90 % for R1 = 10, 20 … 120, measured (docs/SOUND.md; 10 and 20 extrapolated: the
- *  takes were too short). The DX doesn't go faster than ~26 ms. */
-const ATTACK_S = [9.8, 4.9, 2.44, 1.27, 0.632, 0.306, 0.144, 0.042, 0.032, 0.026, 0.026, 0.026]
+ *  takes were too short), less what RISE_S adds: the envelope itself is near instant from 100. */
+const ATTACK_S = [9.8, 4.9, 2.44, 1.27, 0.632, 0.306, 0.135, 0.03, 0.018, 0.006, 0.004, 0.004]
 /** Decay: seconds to −20 dB for R2 = 10, 20 … 120, measured (10 and 20 extrapolated, 120 instant). */
 const DECAY_S = [27, 13.4, 6.7, 3.43, 1.74, 0.838, 0.424, 0.182, 0.082, 0.036, 0.014, 0.004]
 
@@ -58,6 +58,11 @@ function interpolate(table: readonly number[], rate: number): number {
   return Math.exp(Math.log(table[i]) * (1 - f) + Math.log(table[i + 1]) * f)
 }
 
+/** An operator's level follows its envelope up with this time constant, down at once (measured 2026-10-26,
+ *  local fastdecay takes): no note gets louder faster than ~21 ms to 90 %, and a fast first decay starts before
+ *  the rise is done, so it takes the peak down (R2 60: −1.6 dB, 80: −3.3, 95: −6); with L2 at 64 the note rises
+ *  straight to L2. */
+export const RISE_S = 0.009
 /** A rise heads for this many times its target and stops there (measured, tools/curves.ts attack takes): the
  *  amplitude approaches it exponentially, so a rise starts fast and slows into the top. */
 export const ATTACK_OVERSHOOT = 1.5

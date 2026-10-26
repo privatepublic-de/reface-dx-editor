@@ -71,6 +71,12 @@ export function probes(groups: readonly string[] = []): Probe[] {
       out.push({ group: 'noisegap', label: `c${carrierFb} m${modFb} ${fixed ? '3k' : '1to1'} ${level}`, voice: v, note: 48, holdS: 0.8 })
     }
   }
+  if (want('instruments')) {
+    // Start from…: converted DX7 instruments as the wheel plays them alone at Wild none (tools/fromDx7.ts)
+    for (const [id, note, holdS] of [['epiano', 60, 1.2], ['piano', 48, 1.5], ['trumpet', 60, 1.2], ['kick', 48, 0.6], ['snare', 60, 0.6], ['hiHat', 72, 0.5], ['vibraphone', 72, 1.2], ['fmBass', 36, 0.8]] as const) {
+      out.push({ group: 'instruments', label: `instrument ${id}`, voice: generateWheel({ ...NO_PINS, instrument: id }, { seed: 1, wild: 0 }).voice, note, holdS })
+    }
+  }
   if (want('controls')) {
     const c = (label: string, t: Tonality, controls: Partial<WheelChoices>, o: Partial<Probe> = {}) =>
       out.push({ group: 'controls', label, voice: wheel([[t, 1]], null, controls).voice, note: 60, holdS: 1.2, ...o })

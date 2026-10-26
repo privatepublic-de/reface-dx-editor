@@ -2,7 +2,7 @@
 // shaped waves (feedback), every tonality from one pin, and noise grafted at several levels. Each is played on the
 // DX and rendered by the engine and measured the same way: loudness, brightness (spectral centroid in harmonics of
 // the note), noisiness (flatness) and the envelope. Usage: npx vite-node tools/voiceProbe.ts [--engine] [group…]
-// Groups: shaped tonalities noise noisegap controls mixes. --engine renders only (no DX); --compare renders the voices the DX played (the
+// Groups: shaped tonalities noise noisegap controls mixes instruments. --engine renders only (no DX); --compare renders the voices the DX played (the
 // .syx beside each take) against its logged measures, without the DX. Appends the DX's to local/takes/voices.jsonl.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { renderNote } from '../src/engine/render'

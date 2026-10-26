@@ -128,6 +128,9 @@ export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: n
   return out
 }
 
+/** The fastest first decay after an attack that the DX still lets be heard (local fastdecay takes, 2026-10-26: at
+ *  R2 95 the peak is 6 dB down, at 105 30 dB, from 115 the note is silent). */
+const FIRST_FALL_MAX = 95
 export const EG_STEP = 0.005
 export const EG_HOLD = 3
 export const EG_TOTAL = 5
@@ -312,6 +315,8 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
     if (want >= 0) for (let r = 127; r >= 0; r--) if (err(r) < err(r1) - 1e-9 || r === 127) r1 = r
   }
   const rates = fitRates(egOnly, levels, [r1, ...dxRates.slice(1).map((r) => Math.round((r * 127) / 99))], carrier ? [1, 2, 3] : [0, 1, 2, 3])
+  // a first fall faster than this right after the attack takes the note's peak away on the DX (docs/SOUND.md)
+  if (levels[1] < levels[0]) rates[1] = Math.min(FIRST_FALL_MAX, rates[1])
   o.set(rates, 0x01)
   o.set(levels, 0x05)
   // amplitude modulation: the dip the DX7's LFO makes on this operator
@@ -644,7 +649,7 @@ export function convert(v: DxVoice): Converted {
         for (const [byte, steps] of tries) {
           for (const d of steps) {
             const was = voice.ops[s][byte]
-            voice.ops[s][byte] = Math.max(byte === 0x12 ? 1 : 0, Math.min(127, was + d))
+            voice.ops[s][byte] = Math.max(byte === 0x12 ? 1 : 0, Math.min(byte === 0x02 && voice.ops[s][0x06] < voice.ops[s][0x05] ? FIRST_FALL_MAX : 127, was + d))
             const e = score(want, voice)
             if (e < best - 1e-4) best = e
             else voice.ops[s][byte] = was

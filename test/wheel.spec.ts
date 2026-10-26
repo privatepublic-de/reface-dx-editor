@@ -351,7 +351,9 @@ describe('instruments to start from (converted from the DX7, tools/fromDx7.ts)',
       expect(same, id).toBe(true)
       expect(voiceName(g.voice)).toBe(INSTRUMENTS[id].label)
       expect(g.roles[0].tonality).toBe(INSTRUMENTS[id].family)
-      expect(Math.abs(g.loudness - TARGET_DB), id).toBeLessThan(3)
+      // levelled, unless its carriers are already at full level (a fast first decay keeps the clavinet 5 dB down)
+      const full = ALGORITHMS[g.voice.common[0x10]].carriers.every((op) => g.voice.ops[op][0x12] === 127 || !g.voice.ops[op][0x12])
+      expect(Math.abs(g.loudness - TARGET_DB) < 3 || (full && g.loudness < TARGET_DB), id).toBe(true)
     }
   })
 

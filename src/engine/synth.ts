@@ -7,7 +7,7 @@ import { ALGORITHMS } from '../params/algorithms'
 import { fixedHzOf, ratioOf } from '../params/display'
 import type { Voice } from '../sysex/codec'
 import {
-  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, releaseDbPerS, detuneFactor, egLevelDb, FEEDBACK_SMOOTHING, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
+  ampModDb, ATTACK_OVERSHOOT, attackTau, RISE_S, decayDbPerS, releaseDbPerS, detuneFactor, egLevelDb, FEEDBACK_SMOOTHING, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
   pitchEgSemitones, pitchEgSemitonesPerS, pitchModSemitones, rateScale, SILENT_DB, TUNING, velocityDb,
 } from './tables'
 
@@ -207,6 +207,8 @@ interface OpState {
   peg: boolean
   /** this sample's output */
   y: number
+  /** the level as heard: follows the envelope up within RISE_S, down at once */
+  heard: number
 }
 
 class Note {
@@ -217,6 +219,8 @@ class Note {
   private pmdSemitones = 0
   /** the feedback's low-pass per sample, FEEDBACK_SMOOTHING at 48 kHz */
   private readonly smoothing: number
+  /** how far the heard level follows a rise per sample (RISE_S) */
+  private readonly rise: number
   key = -1
   released = false
   active = false
@@ -225,8 +229,9 @@ class Note {
   constructor(private readonly sampleRate: number) {
     this.smoothing = 1 - (1 - FEEDBACK_SMOOTHING) ** (48000 / sampleRate)
     this.ops = Array.from({ length: 4 }, () => ({
-      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, feedback: 0, square: false, smoothed: 0, amdDb: 0, pmd: false, peg: false, y: 0,
+      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, feedback: 0, square: false, smoothed: 0, amdDb: 0, pmd: false, peg: false, y: 0, heard: 0,
     }))
+    this.rise = 1 - Math.exp(-1 / (RISE_S * sampleRate))
     this.pitchEnv = new PitchEnv(sampleRate)
   }
 
@@ -256,6 +261,7 @@ class Note {
       s.peg = o[0x10] !== 0
       s.phase = 0
       s.y = 0
+      s.heard = 0
     })
     this.pitchEnv.init([v.common[0x15], v.common[0x16], v.common[0x17], v.common[0x18]], [v.common[0x19], v.common[0x1a], v.common[0x1b], v.common[0x1c]])
     this.pmdSemitones = pitchModSemitones(v.common[0x14])
@@ -274,15 +280,17 @@ class Note {
     // modulators before what they modulate: in every algorithm a modulator has the higher number
     for (let i = 3; i >= 0; i--) {
       const s = this.ops[i]
-      let db = s.env.next() + s.offsetDb
-      if (s.amdDb) db -= s.amdDb * lfo.fade * (1 - lfo.value) / 2
+      const db = s.env.next() + s.offsetDb
+      // heard: up within RISE_S, down at once
+      const level = db <= SILENT_DB ? 0 : 10 ** (db / 20)
+      s.heard = level > s.heard ? s.heard + (level - s.heard) * this.rise : level
       const semis = (s.pmd ? vibrato : 0) + (s.peg ? peg : 0)
       s.phase += (s.hz * (semis ? 2 ** (semis / 12) : 1)) / this.sampleRate
       s.phase -= Math.floor(s.phase)
-      if (!s.on || db <= SILENT_DB) {
+      if (!s.on || s.heard <= 1e-6) {
         s.y = 0
       } else {
-        const amp = TUNING.maxCycles * 10 ** (db / 20)
+        const amp = TUNING.maxCycles * s.heard * (s.amdDb ? 10 ** (-(s.amdDb * lfo.fade * (1 - lfo.value)) / 40) : 1)
         let mod = 0
         for (const m of this.modulators[i]) mod += this.ops[m].y
         const p = s.phase + mod

@@ -38,7 +38,7 @@ export function Dx7Import() {
       <div className="style-sheet__body dx7-import__body">
         <p className="dim dx7-import__hint">
           {original
-            ? 'Every voice is being converted to four operators. Click one to hear it on the DX (it goes first if it isn’t ready yet). Tick the ones to keep.'
+            ? 'Every voice is being converted to four operators. Most lose something on the way and none sounds exactly as on a DX7 or in Dexed: click one to hear it on the DX (it goes first if it isn’t ready yet), tick the ones worth keeping.'
             : 'Connect the DX to hear them. Ticked voices are converted and kept all the same.'}
         </p>
         <ul className="dx7-import__list">

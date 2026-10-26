@@ -293,6 +293,14 @@ accent and the register are checked in the engine only (pitch EG rates are still
 
 ## Instruments from the DX7 (PLAN §8.6)
 
+**What to expect.** A converted DX7 voice is an approximation, not a copy. Six operators become four and 32
+algorithms 12; where a voice needs all six (two 3-operator stacks, a hammer beside a body) something goes. The
+reface's own behaviour differs too: no carrier rises faster than ~24 ms (the first click of a hammer or a pluck
+goes), a fast first decay is a coin toss, envelopes rise in amplitude where the DX7's climb evenly in dB (a slow
+brass swell opens early), feedback never turns to noise on its own, and the pitch EG starts at L1. The distances
+below are measured against the volca's DX7 engine; most voices land within 2–5 dB, none at 0. Nothing imported
+sounds exactly as in Dexed or on a real DX7: listen, keep what works, and edit from there.
+
 Start from… offers the volca fm generator's 41 instruments: Yamaha's DX7, TX7, TX816 and VRC voices, its own drums,
 choirs and whistle. `tools/fromDx7.ts` converts each original once into `src/wheel/instrumentVoices.ts`, with both
 engines as oracles: the volca's DX7 engine (MSFA's arithmetic) plays the original, the probe engine each candidate.

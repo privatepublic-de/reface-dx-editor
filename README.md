@@ -55,7 +55,10 @@ with GitHub Pages once the repository is on GitHub.
   **Export** always means a `.syx` file. **DX7 voices:** importing a DX7 `.syx` (one voice or a 32-voice bank)
   opens a window with their names and converts them all to four operators in the background (a bank in under a
   minute; a voice you click goes first): click one to hear it on the DX, tick the ones you want, and they go into
-  the library.
+  the library. **An imported DX7 voice is an approximation, not a copy.** The DX7 has six operators and 32
+  algorithms, the reface four and 12, and its envelopes, feedback and pitch EG behave differently, so most voices
+  lose something: a stack, a hammer's first click, a slowly opening brass swell. None will sound exactly as in
+  Dexed or on a real DX7; listen before you keep one, and take it as a starting point to edit.
 - **DX settings:** the DX's own settings (MIDI channels, MIDI Control, Local, master tune and transpose,
   tempo, pedal, speakers, auto power-off, contrast), live.
 - **Keyboard:** three octaves to play the DX, soft at the top of a key and hard at the front, and a mod wheel.

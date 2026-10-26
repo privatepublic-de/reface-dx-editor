@@ -167,7 +167,7 @@ values again. `test/engine.spec.ts` checks the engine against them (`test/fixtur
 | Curve | Engine against the DX (2026-10-26) |
 | --- | --- |
 | Attack, R1 30–100 | within 1 % (the measured times are its table, so this checks the model, not the fit) |
-| Decay to −20 dB, R2 30–100 | within 4 %; to −40 dB it's 10 % slower at 70–90, and R2 100 reaches −40 dB in 74 ms against the DX's 222 |
+| Decay to −20 dB, R2 30–100 | within 6 %; to −40 dB it's 10 % slower at 70–90, and R2 100 reaches −40 dB in 74 ms against the DX's 222 |
 | Modulator depth, H2–H5 | 2.0 dB mean error after fitting: **0.39 dB per level step**, a full-level operator modulates by **2.0 cycles** |
 
 Still estimates, each marked in `src/engine/tables.ts`: carrier and EG level below 40, feedback (how strong, and
@@ -176,5 +176,5 @@ scaling, rate scaling, detune, LFO speed, delay and depths, pitch EG rates. As t
 gets brighter step by step and turns to noise from about 120 (flatness ~0.4); square feedback keeps to odd
 harmonics and is noisy from about 112. Both follow the operator's own level, as on the DX7.
 
-Next recording session on the DX: `npx vite-node tools/dxCurves.ts carrier eglevel feedback velocity`, then
+Next recording session on the DX: `npx vite-node tools/dxCurves.ts carrier eglevel feedback velocity` (every take now keeps its voice as a .syx beside the WAV), then
 `npx vite-node tools/engineCurves.ts` to compare and fit.

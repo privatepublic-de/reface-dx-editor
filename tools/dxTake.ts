@@ -3,8 +3,8 @@
 // from the X18 (the default audio input) with sox. DX_INPUTS picks the X18 inputs the DX is on (default "1,2").
 // The voice the DX had when the tool started is sent back at the end.
 import { spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import type { Voice } from '../src/sysex/codec'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { voiceToBytes, type Voice } from '../src/sysex/codec'
 import { Session } from '../src/sync/session'
 import { connectHelper } from './coremidiTransport'
 import { RATE } from './dxAudio'
@@ -87,12 +87,15 @@ export async function openDx() {
   process.once('SIGINT', stop)
   process.once('SIGTERM', stop)
 
-  /** Plays `voice` with `note` (or a chord) held `holdS`; the recording (in `file`) from just before note-on. */
+  /** Plays `voice` with `note` (or a chord) held `holdS`; the recording (in `file`) from just before note-on, and
+   *  the voice as a .syx of the same name. */
   async function take(file: string, voice: Voice, note: number | number[], holdS: number, o: TakeOptions = {}): Promise<Float64Array> {
     send([0xb0 | ch, 123, 0])
     session.sendVoice(voice) // a bulk cuts what still sounds (FINDINGS Q7)
     await sleep(150)
     const tail = o.tailS ?? 0.6
+    // the voice beside the take, so it can be played again (in the engine too) whatever made it
+    writeFileSync(file.replace(/\.wav$/, '.syx'), voiceToBytes(0, voice))
     const done = record(file, holdS + tail + 0.3)
     await sleep(300)
     held = Array.isArray(note) ? [...note] : [note]

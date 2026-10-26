@@ -5,7 +5,9 @@ export default defineConfig({
   plugins: [react()],
   // Relative asset paths: the build works at any address, such as GitHub Pages' /reface-dx-editor/.
   base: './',
-  // The editor, and the Phase 0 protocol probe next to it.
-  build: { rollupOptions: { input: { index: 'index.html', probe: 'probe.html' } } },
-  test: { exclude: ['**/node_modules/**', '.claude/**', 'local/**'] },
+  // The build is the editor alone (what GitHub Pages publishes). The Phase 0 protocol probe, /probe.html, runs with
+  // `npm run dev` or `npm run probe`.
+  build: { rollupOptions: { input: { index: 'index.html' } } },
+  // the wheel tests render many voices (up to ~5 s each here, more on a shared CI runner)
+  test: { exclude: ['**/node_modules/**', '.claude/**', 'local/**'], testTimeout: 30000 },
 })

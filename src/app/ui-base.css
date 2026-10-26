@@ -1,7 +1,6 @@
 /* The chrome the synth editors share (bars, dialogs, focus, status): the same in each
    repo, copied rather than packaged. Only the lines marked "device" differ; they map onto this
-   editor's own materials in app.css. Chrome uses --ui-*; the panel keeps the device's names.
-   Spec: synth-editors/DESIGN-ui-consistency.md, tier 1. */
+   editor's own materials in app.css. Chrome uses --ui-*; the panel keeps the device's names. */
 :root {
   --ui-bg: var(--bg); /* device */
   --ui-bar: var(--bar); /* device */

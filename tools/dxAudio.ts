@@ -1,4 +1,4 @@
-// Analysis for the sound tools (copied from nord-lead-2-editor): finding a note's steady part and period, averaging cycles, harmonic
+// Analysis for the sound tools: finding a note's steady part and period, averaging cycles, harmonic
 // amplitudes, spectra and RMS envelopes. Period finding and cycle averaging as in hydrasynth-editor's
 // tools/waveAudio.ts, with a free (wide) period search.
 /** The sample rate of the takes. */
@@ -154,7 +154,7 @@ export function harmonics(cycle: Float64Array, n = 40): { amp: number[]; phase: 
   return { amp, phase }
 }
 
-/** Where a take's note starts: nordTake's recordings reach the note about 0.12 s in (sox starts late;
+/** Where a take's note starts: dxTake's recordings reach the note about 0.12 s in (sox starts late;
  *  ±10 ms). A quiet note's onset can't be found, so it is taken as no later than that. */
 export const NOTE_AT_S = 0.13
 

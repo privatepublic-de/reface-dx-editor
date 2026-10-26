@@ -1,4 +1,4 @@
-// A switch: a row of segmented buttons, or one toggle. After nord-lead-2-editor's Switch, without its LED columns.
+// A switch: a row of segmented buttons, or one toggle. After an earlier editor of ours, without its LED columns.
 
 export interface SwitchProps {
   label: string

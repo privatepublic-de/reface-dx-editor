@@ -1,4 +1,4 @@
-// Live edits as Parameter Changes, after nord-lead-2-editor's CcSender: a parameter changed again within
+// Live edits as Parameter Changes: a parameter changed again within
 // INTERVAL_MS of its last send goes out once, with its latest value, when the interval is up (a dragged knob:
 // ~60 messages a second per parameter, and the last value always arrives). The DX takes 32 Parameter Changes
 // back to back (FINDINGS Q7), so different parameters aren't paced against each other.

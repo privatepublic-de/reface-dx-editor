@@ -1,4 +1,4 @@
-// Plays a voice on the reface DX and records it, for the sound tools (after nord-lead-2-editor's nordTake): the voice
+// Plays a voice on the reface DX and records it, for the sound tools: the voice
 // into the DX's edit buffer (all 7 blocks; never stored, FINDINGS Q2), one held note on its receive channel, recorded
 // from the X18 (the default audio input) with sox. DX_INPUTS picks the X18 inputs the DX is on (default "1,2").
 // The voice the DX had when the tool started is sent back at the end.

@@ -1,5 +1,5 @@
-// A knob, after nord-lead-2-editor's (which has it from hydrasynth-editor and dominion-1-controller), with the
-// gestures every sibling editor shares (synth-editors/DESIGN-ui-consistency.md, tier 2): drag up/down (~200 px =
+// A knob, after hydrasynth-editor's (by way of an earlier editor of ours), with the
+// gestures every sibling editor shares: drag up/down (~200 px =
 // full range, Shift = ten times finer), wheel, arrow keys / PageUp / PageDown / Home / End, double-click or Delete
 // = the default, click the value (or Enter) to type. A bipolar value's zero holds a drag for a few pixels.
 import { useEffect, useRef, useState } from 'react'

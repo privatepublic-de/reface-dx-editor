@@ -1,4 +1,4 @@
-// Requests to the DX, one in flight at a time, after nord-lead-2-editor's. The DX answers in ~3–18 ms, or ~210 ms
+// Requests to the DX, one in flight at a time. The DX answers in ~3–18 ms, or ~210 ms
 // right after a Program Change (FINDINGS Q8). A reply that comes after its request gave up must not be taken
 // as the next request's answer, so after a timeout the queue waits it out (and drops it) before moving on.
 // A voice is 7 messages: the `match` of a voice read collects them and accepts the footer (see session.ts).

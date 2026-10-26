@@ -1,4 +1,4 @@
-// Measures the reface DX's curves from its audio (after nord-lead-2-editor's probeSound): envelope rates, modulator
+// Measures the reface DX's curves from its audio: envelope rates, modulator
 // depth, carrier and EG level, feedback (saw and square), velocity. The points and measures are tools/curves.ts,
 // shared with tools/engineCurves.ts. Usage: npx vite-node tools/dxCurves.ts [attack decay level carrier eglevel
 // feedback velocity] (all when none is given). Appends to local/takes/curves/curves.jsonl.

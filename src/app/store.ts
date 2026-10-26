@@ -1,5 +1,5 @@
 // The editor's state: the connection, the voice being edited (as the DX has it), and what was last read
-// from the DX (the baseline: "Edited" means the voice differs from it). After nord-lead-2-editor's store.
+// from the DX (the baseline: "Edited" means the voice differs from it).
 import { isCarrier } from '../params/algorithms'
 import { create } from 'zustand'
 import { FakeRefaceDx } from '../demo/fakeRefaceDx'

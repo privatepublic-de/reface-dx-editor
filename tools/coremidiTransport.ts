@@ -1,5 +1,5 @@
 // Node-side transport through logue-patcher's CoreMIDI helper (a JSON-lines bridge),
-// for tools that talk to the reface DX from the shell (copied from nord-lead-2-editor). Set LOGUE_MIDI_HELPER to override the path.
+// for tools that talk to the reface DX from the shell. Set LOGUE_MIDI_HELPER to override the path.
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import type { MidiTransport } from '../src/midi/transport'

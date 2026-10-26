@@ -4,8 +4,13 @@ A voice editor and librarian for the Yamaha reface DX in the browser, over Web M
 screen, including everything behind the DX's Edit mode: the algorithm as the DX draws it, four operators with
 their envelopes and keyboard scaling, LFO, pitch EG and effects.
 
-![The editor in demo mode: the algorithm, voice, LFO and pitch EG on the left, the four operators side by side
-with their frequency, envelope and keyboard-scaling screens, the effects below](docs/screenshot.png)
+**[Open the editor →](https://privatepublic-de.github.io/reface-dx-editor/)** (or
+[try the demo](https://privatepublic-de.github.io/reface-dx-editor/?demo), with a simulated DX). Chrome, Edge or
+Firefox, nothing to install.
+
+[![The editor in demo mode: the algorithm, voice, LFO and pitch EG on the left, the four operators side by side
+with their frequency, envelope and keyboard-scaling screens, the effects below](docs/screenshot.png)](https://privatepublic-de.github.io/reface-dx-editor/?demo)
+<sub>Click the picture to open the editor in demo mode: a simulated DX, no synth needed.</sub>
 
 ## How it was made
 
@@ -16,13 +21,18 @@ What it knows about the DX's MIDI comes from Yamaha's reface Data List, correcte
 
 ## Running it
 
-Double-click `start/start-macos.command` (or `start/start-windows.bat`, `start/start.sh`). It installs, builds
-and opens http://localhost:5185. You need [Node.js](https://nodejs.org). Add `?demo` to the address to try it
-with a simulated DX.
+Open https://privatepublic-de.github.io/reface-dx-editor/ in Chrome, Edge or Firefox (Safari has no Web MIDI),
+allow MIDI access, click Connect. Firefox first offers a small *site permission add-on* for the page: that's how it
+grants MIDI with SysEx. Add it; it covers this page only and can be removed under Add-ons and themes.
 
-Use Chrome or Edge (Web MIDI with SysEx; Safari has none), allow MIDI access, click Connect. Everything runs
-in the browser, see the [privacy statement](public/privacy.html). `.github/workflows/pages.yml` publishes it
-with GitHub Pages once the repository is on GitHub.
+### Offline, from your own computer
+
+Web MIDI only works on a served page, not on a file opened from disk, so offline the editor runs from a small
+local server. It needs [Node.js](https://nodejs.org). Double-click the launcher for your system in `start/`:
+`start-macos.command` (the first time: right-click, Open), `start-windows.bat` or `start.sh`. It installs what's
+needed the first time, builds the editor and opens http://localhost:5185; the same from a terminal: `npm start`.
+The port is fixed because the browser remembers the MIDI permission per address. Add `?demo` to the address to
+try it with a simulated DX.
 
 ### On the DX
 
@@ -63,6 +73,13 @@ with GitHub Pages once the repository is on GitHub.
   tempo, pedal, speakers, auto power-off, contrast), live.
 - **Keyboard:** three octaves to play the DX, soft at the top of a key and hard at the front, and a mod wheel.
 
+## Also for the volca fm and volca fm2
+
+Got a Korg volca fm or volca fm2 too? The **[volca fm generator](https://github.com/privatepublic-de/volca-fm-generator)**
+([open it](https://privatepublic-de.github.io/volca-fm-generator/)) is this editor's Style wheel on six operators:
+pin tonalities, shape them, hear the voice in the browser or on the volca, and export it as DX7 SysEx for Dexed,
+a DX7 or anything DX7-compatible. Its 41 classic DX7 instruments are the ones Start from… offers here.
+
 ## Development
 
 ```sh
@@ -76,14 +93,40 @@ npm run list-voices -- some.syx
 Sound tools (the DX on the X18's inputs 1/2, `npx vite-node tools/<name>.ts`): `dxCurves.ts` measures the DX's
 curves, `engineCurves.ts` puts the probe engine beside them, `voiceProbe.ts` plays whole voices on both.
 `fromDx7.ts` converts the volca fm generator's DX7 instruments for Start from… (it needs that repository beside
-this one); the converter itself (`src/dx7/`) also serves the import of DX7 voices. Third-party code:
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+this one); the converter itself (`src/dx7/`) also serves the import of DX7 voices.
 
 The plan and its phases: [PLAN.md](PLAN.md). What the DX does over MIDI, as tested:
-[docs/FINDINGS.md](docs/FINDINGS.md). The chrome (top bar, dialogs, knob gestures) follows the sibling editors
-for the ASM Hydrasynth, Expert Sleepers disting EX, MFB Dominion 1 and Clavia Nord Lead 2X.
+[docs/FINDINGS.md](docs/FINDINGS.md). The chrome (top bar, dialogs, knob gestures) follows the sibling
+[editor for the ASM Hydrasynth](https://github.com/privatepublic-de/hydrasynth-editor).
 
-Yamaha and reface are trademarks of Yamaha Corporation. This editor is not affiliated with or endorsed by
-Yamaha.
+Every push to `main` runs the tests, builds the editor and publishes `dist/` with GitHub Pages
+(`.github/workflows/pages.yml`). Once per repository: Settings → Pages → Source: GitHub Actions. The build uses
+relative paths (`base: './'`), so it works at any address.
 
-MIT License.
+## Privacy
+
+Everything runs in your browser. No accounts, no cookies, no analytics or tracking, nothing loaded from other
+sites; MIDI goes only between the browser and the DX. What the editor remembers (the MIDI ports, the library, the
+Style settings) stays in your browser's storage. GitHub Pages, the host, logs your IP address when you open the
+page. The full statement: [privacy.html](https://privatepublic-de.github.io/reface-dx-editor/privacy.html)
+([source](public/privacy.html)).
+
+## Credits
+
+- **DX7 engine:** the DX7's tables, envelopes and algorithm routing, behind the DX7 import and the probe engine,
+  follow [MSFA](https://github.com/google/music-synthesizer-for-android) (music-synthesizer-for-android, © Google,
+  Apache License 2.0), the engine [Dexed](https://github.com/asb2m10/dexed) is built on.
+- **Instruments:** classic DX7 voices by Yamaha (DX7 ROM and VRC cartridges, TX7, TX816, DX7II) and two pianos
+  of unknown authorship from the cartridge collection that comes with Dexed, by way of the
+  [volca fm generator](https://github.com/privatepublic-de/volca-fm-generator).
+- **The DX:** Yamaha's reface Data List.
+- **Type:** [Barlow](https://github.com/jpt/barlow) by Jeremy Tribby, SIL Open Font License.
+- **Code:** [React](https://react.dev), [Zustand](https://github.com/pmndrs/zustand), [Vite](https://vite.dev),
+  [Vitest](https://vitest.dev), [TypeScript](https://www.typescriptlang.org).
+
+Details and licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Yamaha, reface and DX7 are trademarks of Yamaha Corporation; Korg and volca are trademarks of Korg Inc. This
+editor is not affiliated with or endorsed by Yamaha or Korg.
+
+[MIT License](LICENSE).

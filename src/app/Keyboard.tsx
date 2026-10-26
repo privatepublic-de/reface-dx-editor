@@ -1,4 +1,4 @@
-// A three-octave keyboard and a mod wheel under the panel, after nord-lead-2-editor's (from dominion-1-controller):
+// A three-octave keyboard and a mod wheel under the panel, after an earlier editor of ours:
 // pressing a key sends Note On on the DX's receive channel, letting go sends Note Off. Keys held on the DX light
 // up too. Where on the key you press sets the velocity: near the top soft, near the front edge hard (the
 // operators' velocity sensitivity). One note at a time from the pointer; dragging across the keys glides.

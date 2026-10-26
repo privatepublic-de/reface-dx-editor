@@ -29,3 +29,25 @@ The instruments in **Start from…** (`src/wheel/instrumentVoices.ts`) are conve
 instruments, which reproduce classic DX7 voices, each named with its source: Yamaha's factory voices (DX7 ROM
 cartridges 1–4, the VRC cartridges, the TX7, TX816 and DX7II/DX7IIFD sets) and two pianos, GOOD PIANO and PianoBo 7\,
 from cartridges of unknown authorship in the collection distributed with [Dexed](https://github.com/asb2m10/dexed).
+The voices are the work of their makers; Yamaha and DX7 are trademarks of Yamaha Corporation.
+
+## Barlow
+
+The typefaces Barlow and Barlow Condensed by Jeremy Tribby, served with the app through
+[Fontsource](https://fontsource.org) (`@fontsource/barlow`, `@fontsource/barlow-condensed`).
+Licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org. Source:
+https://github.com/jpt/barlow.
+
+## Libraries
+
+- [React](https://react.dev) and React DOM, MIT License, © Meta Platforms, Inc. and affiliates.
+- [Zustand](https://github.com/pmndrs/zustand), MIT License, © Paul Henschel.
+
+Built with [Vite](https://vite.dev) (MIT), [Vitest](https://vitest.dev) (MIT) and
+[TypeScript](https://www.typescriptlang.org) (Apache License 2.0); these are not part of the published app.
+
+## Yamaha
+
+What the reface DX takes and sends over MIDI comes from Yamaha's reface Data List and from tests on the device
+([docs/FINDINGS.md](docs/FINDINGS.md)). Yamaha and reface are trademarks of Yamaha Corporation. This project is not
+affiliated with or endorsed by Yamaha.

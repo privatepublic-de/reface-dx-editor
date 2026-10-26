@@ -1,5 +1,5 @@
-// Undo/redo for the voice as snapshots, after nord-lead-2-editor's History (which has it from dominion-1-controller
-// and hydrasynth-editor). Going back sends only what differs, as Parameter Changes: a whole voice would cut
+// Undo/redo for the voice as snapshots, after hydrasynth-editor's (by way of an earlier editor
+// of ours). Going back sends only what differs, as Parameter Changes: a whole voice would cut
 // the notes that are sounding (FINDINGS Q7). See `voiceChanges`.
 import { cloneVoice, type Voice } from '../sysex/codec'
 

@@ -1,5 +1,5 @@
-// The library's state: voices kept in this browser, and the DX's 32 locations as last seen. After
-// nord-lead-2-editor's libraryStore, in localStorage (a voice is 150 bytes; even thousands fit).
+// The library's state: voices kept in this browser, and the DX's 32 locations as last seen. In
+// localStorage (a voice is 150 bytes; even thousands fit).
 import { create } from 'zustand'
 import { addEntries, deserialize, importSyx, makeEntry, serialize, type Entry, type Slot } from '../library/library'
 import { cloneVoice, setVoiceName, type Voice } from '../sysex/codec'

@@ -5,6 +5,8 @@ import { version } from '../../package.json'
 
 const CREDITS: { what: string; who: string; license: string; href: string }[] = [
   { what: 'SysEx and CC protocol', who: 'the reface Data List, corrected by tests on the DX (docs/FINDINGS.md in the source)', license: '', href: '' },
+  { what: 'DX7 engine (MSFA)', who: 'Google Inc., the DX7 tables, envelopes and algorithm routing behind the DX7 import and the probe engine', license: 'Apache License 2.0', href: 'https://github.com/google/music-synthesizer-for-android' },
+  { what: 'Start from… instruments', who: 'classic DX7 voices by Yamaha, and two pianos of unknown authorship from the cartridges that come with Dexed, by way of the volca fm generator', license: '', href: 'https://github.com/privatepublic-de/volca-fm-generator' },
   { what: 'Fonts Barlow and Barlow Condensed', who: 'The Barlow Project Authors', license: 'SIL OFL 1.1', href: 'https://github.com/jpt/barlow' },
   { what: 'React, React DOM', who: 'Facebook, Inc. (Meta) and its affiliates', license: 'MIT', href: 'https://react.dev' },
   { what: 'Zustand', who: 'Paul Henschel', license: 'MIT', href: 'https://github.com/pmndrs/zustand' },
@@ -71,7 +73,11 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           </li>
         ))}
       </ul>
-      <p className="dim">Yamaha and reface are trademarks of Yamaha Corporation. This editor is not affiliated with or endorsed by Yamaha.</p>
+      <p className="dim">
+        Yamaha, reface and DX7 are trademarks of Yamaha Corporation. This editor is not affiliated with or endorsed by Yamaha.
+        Details and licenses: THIRD_PARTY_NOTICES.md in the{' '}
+        <a href="https://github.com/privatepublic-de/reface-dx-editor" target="_blank" rel="noreferrer">source on GitHub</a>.
+      </p>
       <details>
         <summary>License</summary>
         <pre className="about-dialog__text">{licenseText}</pre>

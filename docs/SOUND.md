@@ -339,57 +339,68 @@ level a little lower, then fast at R3: on the DX that peak varies by 3 dB from h
 | Instrument | Original | Algorithm | Reduced | Distance dB | Bright early C2 | Body C2 | Decay C2 s | Early C4 | Decay C4 s |
 |---|---|---|---|---|---|---|---|---|---|
 | Grand | STEINWAY | 13 → 8 | without OP4, OP5 | 3.4 | 25.81→18.23 | 16.98→11.00 | ∞→∞ | 13.23→11.21 | ∞→∞ |
-| Grand | Bosendorfr | 4 → 1 | without OP4, OP5, OP6 | 6.2 | 39.17→25.49 | 23.49→15.92 | ∞→∞ | 14.29→11.51 | 0.88→0.72 |
-| Upright | UPRIGHT | 3 → 8 | without OP3, OP6 | 7.8 | 27.02→5.24 | 15.16→4.46 | ∞→∞ | 6.73→4.18 | ∞→∞ |
-| Upright | AC.PNO 1.1 | 16 → 3 | without OP2, OP6 | 1.6 | 5.89→5.58 | 5.25→5.18 | ∞→∞ | 1.78→1.93 | ∞→∞ |
-| Upright | GOOD PIANO | 4 → 6 | without OP5, OP6 | 2.0 | 27.27→34.80 | 13.89→18.52 | ∞→∞ | 6.87→6.67 | ∞→∞ |
-| Upright | PianoBo 7\ | 9 → 6 | without OP2, OP4 | 1.7 | 7.91→7.71 | 5.95→6.30 | ∞→∞ | 2.44→2.98 | 0.93→0.92 |
-| E.Piano | E.PIANO 1 | 5 → 8 | without OP5, OP6 | 2.8 | 4.60→4.04 | 2.98→2.54 | ∞→∞ | 3.30→3.76 | ∞→∞ |
-| Harpsichrd | HARPSICH 1 | 5 → 8 | without OP5, OP6 | 2.7 | 9.11→8.23 | 9.19→9.48 | ∞→∞ | 8.94→7.68 | ∞→∞ |
+| Grand | Bosendorfr | 4 → 3 | OP1 into OP4, without OP6 | 4.2 | 39.17→26.67 | 23.49→16.92 | ∞→∞ | 14.29→14.16 | 0.88→0.86 |
+| Upright | UPRIGHT | 3 → 6 | without OP5, OP6 | 2.2 | 27.02→28.30 | 15.16→15.70 | ∞→∞ | 6.73→7.48 | ∞→∞ |
+| Upright | AC.PNO 1.1 | 16 → 3 | without OP2, OP6 | 1.0 | 5.89→5.60 | 5.25→5.16 | ∞→∞ | 1.78→1.96 | ∞→∞ |
+| Upright | GOOD PIANO | 4 → 6 | without OP5, OP6 | 1.7 | 27.27→34.36 | 13.89→18.77 | ∞→∞ | 6.87→6.64 | ∞→∞ |
+| Upright | PianoBo 7\ | 9 → 6 | without OP2, OP4 | 1.8 | 7.91→7.47 | 5.95→5.87 | ∞→∞ | 2.44→2.82 | 0.93→0.96 |
+| E.Piano | E.PIANO 1 | 5 → 8 | without OP5, OP6 | 2.6 | 4.60→4.25 | 2.98→2.57 | ∞→∞ | 3.30→3.98 | ∞→∞ |
+| Harpsichrd | HARPSICH 1 | 5 → 8 | without OP5, OP6 | 2.3 | 9.11→8.23 | 9.19→9.44 | ∞→∞ | 8.94→7.68 | ∞→∞ |
 | Clavinet | CLAV    1 | 18 → 3 | spliced without OP2, OP5 | 2.7 | 10.13→10.86 | 8.35→7.94 | ∞→∞ | 6.42→5.88 | ∞→∞ |
-| Nylon Gtr | SPANISHGTR | 14 → 6 | without OP2, OP5 | 0.5 | 4.88→4.66 | 3.27→3.22 | ∞→∞ | 4.80→4.60 | ∞→∞ |
-| Steel Gtr | FOLK GUIT | 14 → 2 | without OP1, OP2 | 1.3 | 10.34→10.26 | 7.16→7.32 | ∞→∞ | 10.11→9.92 | ∞→∞ |
-| Harp | HARP    1 | 3 → 6 | without OP5, OP6 | 1.8 | 5.51→4.78 | 1.53→1.54 | ∞→∞ | 3.12→2.83 | ∞→∞ |
-| Koto | KOTO | 2 → 1 | without OP1, OP2 | 1.4 | 15.57→16.16 | 3.13→3.14 | 0.98→0.86 | 5.41→5.65 | 0.46→0.40 |
+| Nylon Gtr | SPANISHGTR | 14 → 2 | without OP1, OP2 | 0.6 | 4.88→4.79 | 3.27→3.35 | ∞→∞ | 4.80→4.67 | ∞→∞ |
+| Steel Gtr | FOLK GUIT | 14 → 2 | without OP1, OP2 | 1.2 | 10.34→10.26 | 7.16→7.32 | ∞→∞ | 10.11→9.92 | ∞→∞ |
+| Harp | HARP    1 | 3 → 6 | without OP5, OP6 | 1.4 | 5.51→4.79 | 1.53→1.57 | ∞→∞ | 3.12→2.83 | ∞→∞ |
+| Koto | KOTO | 2 → 1 | without OP1, OP2, OP6 | 1.4 | 15.57→14.87 | 3.13→3.24 | 0.98→0.93 | 5.41→5.95 | 0.46→0.41 |
 | Sitar | SITAR | 8 → 3 | without OP1, OP2 | 4.1 | 24.17→24.47 | 8.45→6.17 | ∞→∞ | 21.86→21.88 | ∞→∞ |
-| Pizzicato | PIZZ STGS | 2 → 8 | spliced without OP4, OP6 | 0.8 | 1.93→1.97 | 0.00→25.69 | 0.08→0.07 | 2.10→2.10 | 0.06→0.06 |
+| Pizzicato | PIZZ STGS | 2 → 8 | without OP5, OP6 | 0.8 | 1.93→1.95 | 0.00→28.50 | 0.08→0.07 | 2.10→2.09 | 0.06→0.06 |
 | Vibraphone | VIBE    1 | 23 → 11 | without OP3, OP5 | 3.0 | 2.61→2.48 | 1.08→1.11 | 0.61→0.95 | 2.17→2.21 | 0.18→0.21 |
-| Xylophone | XYLOPHONE | 7 → 8 | without OP4, OP6 | 1.3 | 0.99→1.68 | 1.09→0.64 | 0.18→0.18 | 0.57→0.75 | 0.13→0.12 |
-| Glocken | GLOCKEN  1 (Original Yamaha/DX7 VRC Cartridges/VRC-101/VRC-101 KEYBORD,PLUCKD & TUNED PERCUSSION GROUP (B) #27) | 23 → 11 | all | 2.5 | 5.19→4.97 | 2.59→2.55 | ∞→∞ | 4.15→4.75 | ∞→∞ |
-| Steel Drum | STEEL DRUM | 15 → 8 | without OP5, OP6 | 2.4 | 3.18→2.83 | 1.20→1.22 | ∞→∞ | 2.79→2.50 | 0.64→0.66 |
-| FM Bass | BASS    1 | 16 → 3 | OP5 into OP2, without OP6 | 1.8 | 9.50→9.16 | 1.66→1.65 | ∞→∞ | 6.79→6.88 | ∞→∞ |
-| Slap Bass | Slap.Bass (Original Yamaha/DX7II VRC Cartridges/VRC-1001_DECAY group_A(33-64) #22) | 17 → 3 | without OP3, OP4 | 2.1 | 13.28→12.95 | 2.93→3.01 | ∞→∞ | 4.64→5.07 | ∞→∞ |
-| Upright | JazzBass | 15 → 6 | without OP2, OP5 | 2.6 | 2.75→2.18 | 2.75→2.55 | 0.67→0.47 | 1.57→1.93 | 0.60→∞ |
-| Synth Bass | SYN-BASS 1 | 3 → 6 | without OP5, OP6 | 1.7 | 4.55→3.74 | 2.16→2.25 | 0.69→∞ | 4.68→4.16 | ∞→∞ |
-| Oboe | OBOE | 3 → 6 | without OP5, OP6 | 2.1 | 6.30→8.41 | 6.32→6.21 | ∞→∞ | 6.46→8.48 | ∞→∞ |
+| Xylophone | XYLOPHONE | 7 → 8 | without OP4, OP6 | 1.3 | 0.99→1.68 | 1.09→0.62 | 0.18→0.18 | 0.57→0.75 | 0.13→0.12 |
+| Glocken | GLOCKEN  1 (Original Yamaha/DX7 VRC Cartridges/VRC-101/VRC-101 KEYBORD,PLUCKD & TUNED PERCUSSION GROUP (B) #27) | 23 → 11 | all | 2.6 | 5.19→4.97 | 2.59→2.55 | ∞→∞ | 4.15→4.75 | ∞→∞ |
+| Steel Drum | STEEL DRUM | 15 → 8 | without OP5, OP6 | 1.6 | 3.18→2.77 | 1.20→1.24 | ∞→∞ | 2.79→2.36 | 0.64→0.66 |
+| FM Bass | BASS    1 | 16 → 3 | OP5 into OP2, without OP6 | 1.8 | 9.50→9.02 | 1.66→1.64 | ∞→∞ | 6.79→6.65 | ∞→∞ |
+| Slap Bass | Slap.Bass (Original Yamaha/DX7II VRC Cartridges/VRC-1001_DECAY group_A(33-64) #22) | 17 → 3 | without OP3, OP4 | 2.2 | 13.28→13.03 | 2.93→3.04 | ∞→∞ | 4.64→5.21 | ∞→∞ |
+| Upright | JazzBass | 15 → 6 | without OP2, OP5 | 3.6 | 2.75→1.45 | 2.75→2.80 | 0.67→0.12 | 1.57→1.71 | 0.60→∞ |
+| Synth Bass | SYN-BASS 1 | 3 → 6 | without OP5, OP6 | 1.7 | 4.55→3.96 | 2.16→2.19 | 0.69→∞ | 4.68→4.43 | ∞→∞ |
+| Oboe | OBOE | 3 → 8 | spliced without OP3, OP5 | 2.1 | 6.30→6.93 | 6.32→6.77 | ∞→∞ | 6.46→6.30 | ∞→∞ |
 | Bassoon | BASSOON | 2 → 1 | without OP1, OP2, OP6 | 1.9 | 2.66→2.97 | 2.82→2.63 | ∞→∞ | 2.68→3.02 | ∞→∞ |
 | Sax | SAXOPHONE3 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (A) #20) | 18 → 1 | OP2 into OP4, without OP3 | 1.5 | 6.42→5.56 | 7.45→6.60 | ∞→∞ | 6.87→6.60 | ∞→∞ |
-| Harmonica | HARMONICA1 | 1 → 1 | all | 1.7 | 1.23→1.22 | 1.87→1.89 | ∞→∞ | 1.23→1.22 | ∞→∞ |
-| Accordion | ACCORDION | 4 → 8 | spliced without OP3, OP5 | 3.1 | 3.66→2.63 | 3.31→2.58 | ∞→∞ | 3.15→2.29 | ∞→∞ |
-| Trumpet | BR TRUMPET | 18 → 3 | without OP2, OP5, OP6 | 4.5 | 1.40→2.94 | 10.09→8.66 | 0.20→0.42 | 7.23→3.43 | ∞→∞ |
-| Trombone | TROMBONE 1 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #6) | 18 → 5 | without OP5, OP6 | 5.1 | 1.58→3.36 | 14.92→13.62 | ∞→0.51 | 2.36→2.61 | ∞→∞ |
+| Harmonica | HARMONICA1 | 1 → 1 | all | 1.7 | 1.23→1.21 | 1.87→1.89 | ∞→∞ | 1.23→1.21 | ∞→∞ |
+| Accordion | ACCORDION | 4 → 6 | without OP2, OP3 | 3.0 | 3.66→3.67 | 3.31→3.40 | ∞→∞ | 3.15→3.02 | ∞→∞ |
+| Trumpet | BR TRUMPET | 18 → 3 | without OP2, OP5, OP6 | 4.8 | 1.40→4.01 | 10.09→8.31 | 0.20→0.42 | 7.23→4.68 | ∞→∞ |
+| Trombone | TROMBONE 1 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #6) | 18 → 5 | without OP5, OP6 | 5.2 | 1.58→3.49 | 14.92→13.71 | ∞→∞ | 2.36→2.74 | ∞→∞ |
 | Horn | HORN     1 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (A) #22) | 10 → 3 | without OP1, OP2, OP3 | 1.9 | 1.60→1.42 | 2.60→1.70 | ∞→∞ | 1.25→1.29 | ∞→∞ |
-| Tuba | TUBA (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #11) | 18 → 3 | without OP2, OP5, OP6 | 4.2 | 1.06→1.98 | 2.11→3.18 | ∞→∞ | 4.52→2.47 | ∞→∞ |
-| Brass Sect | BRASS   1 | 22 → 8 | without OP4, OP5 | 4.3 | 9.35→7.19 | 3.90→5.28 | ∞→0.15 | 7.60→4.62 | ∞→∞ |
-| Violin | VIOLIN   4 (Original Yamaha/DX7 VRC Cartridges/VRC-103/VRC-103 SUSTAIN GROUP (A) #4) | 18 → 1 | without OP2, OP3 | 4.8 | 65.95→75.65 | 16.52→12.76 | ∞→∞ | 37.97→39.94 | ∞→∞ |
-| Cello | CELLO  7.4 | 16 → 3 | spliced without OP2, OP3 | 5.1 | 8.99→12.31 | 5.57→5.33 | ∞→∞ | 7.81→6.70 | ∞→∞ |
+| Tuba | TUBA (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #11) | 18 → 5 | without OP5, OP6 | 4.3 | 1.06→1.98 | 2.11→3.20 | ∞→∞ | 4.52→2.47 | ∞→∞ |
+| Brass Sect | BRASS   1 | 22 → 8 | without OP4, OP5 | 4.4 | 9.35→7.19 | 3.90→5.13 | ∞→0.15 | 7.60→4.61 | ∞→∞ |
+| Violin | VIOLIN   4 (Original Yamaha/DX7 VRC Cartridges/VRC-103/VRC-103 SUSTAIN GROUP (A) #4) | 18 → 3 | spliced without OP3, OP5 | 4.7 | 65.95→43.48 | 16.52→19.03 | ∞→∞ | 37.97→40.06 | ∞→∞ |
+| Cello | CELLO  7.4 | 16 → 3 | spliced without OP2, OP3 | 5.0 | 8.99→12.31 | 5.57→5.33 | ∞→∞ | 7.81→6.69 | ∞→∞ |
 | Kick | our own | 5 → 1 | all | 1.5 | 0.55→0.53 | 0.39→0.39 | 0.17→0.16 | 0.14→0.13 | 0.17→0.16 |
 | Snare | our own | 5 → 10 | noise rebuilt: one square wave into its carrier, OP1 for the tone | 1.8 | 76.50→80.23 | 7.53→64.13 | 0.12→0.12 | 19.42→20.22 | 0.12→0.12 |
 | Tom | our own | 5 → 1 | all | 1.2 | 1.40→1.25 | 1.03→1.03 | 0.28→0.27 | 1.33→1.23 | 0.31→0.30 |
 | Hi-Hat | our own | 5 → 5 | noise rebuilt: three square waves into its carrier | 0.8 | 88.82→90.03 | 0.00→0.21 | 0.05→0.04 | 22.63→22.48 | 0.04→0.04 |
-| Cymbal | our own | 5 → 8 | without OP1, OP2 | 8.0 | 89.79→86.46 | 86.28→79.34 | 0.96→0.82 | 22.80→23.31 | 0.98→0.82 |
+| Cymbal | our own | 5 → 8 | without OP1, OP2 | 7.4 | 89.79→82.31 | 86.28→77.20 | 0.96→0.89 | 22.80→22.15 | 0.98→0.85 |
 | Cowbell | our own | 32 → 6 | all | 3.5 | 4.86→4.92 | 4.91→4.93 | 0.10→0.18 | 1.22→1.23 | 0.10→0.18 |
-| Timpani | TIMPANI | 16 → 3 | without OP3, OP4 | 1.7 | 2.01→2.41 | 1.30→1.24 | 0.38→0.29 | 1.70→1.72 | 0.50→0.47 |
+| Timpani | TIMPANI | 16 → 3 | without OP3, OP4 | 1.5 | 2.01→2.27 | 1.30→1.30 | 0.38→0.29 | 1.70→1.64 | 0.50→0.45 |
 | Choir | our own | 32 → 12 | without OP2, OP3 | 5.1 | 2.82→2.41 | 1.32→1.43 | ∞→∞ | 2.81→2.39 | ∞→∞ |
-| Ooh | our own | 32 → 9 | all | 3.9 | 1.31→1.22 | 1.04→1.05 | ∞→∞ | 1.32→1.23 | ∞→∞ |
+| Ooh | our own | 32 → 9 | all | 4.0 | 1.31→1.25 | 1.04→1.05 | ∞→∞ | 1.32→1.26 | ∞→∞ |
 | Whistle | our own | 5 → 10 | noise rebuilt: one square wave into its carrier, OP1 for the tone | 1.6 | 9.58→6.09 | 8.36→6.78 | ∞→∞ | 3.03→2.19 | ∞→∞ |
 
-Most land within 3 dB: the e-piano, harpsichord, clavinet, guitars, harp, koto, pizzicato, mallets, basses, winds,
-horn, the drums but the cymbal, and the whistle. Further off: the Bösendorfer grand (6.2: two 3-operator stacks and
-a hammer in four operators) and the TX7 UPRIGHT (7.8), the brass (4–5: the DX7's slow-opening modulators climb
-evenly in dB, the reface's rush), the strings, choirs, sitar and the cymbal (4–8). Every hammer's and pluck's first
-click goes: the reface rises no faster than ~24 ms. Merging two operators at the same frequency comes out closest
-for the sax and the FM bass; for the rest, dropping one or passing through it does.
+Most land within 3 dB: the pianos but the two grands, the e-piano, harpsichord, clavinet, guitars, harp, koto,
+pizzicato, mallets, basses, winds, horn, the drums but the cymbal, and the whistle. Further off: the grands (STEINWAY
+3.4, Bösendorfer 4.2: two 3-operator stacks and a hammer in four operators), the brass (4–5: the DX7's slow-opening
+modulators climb evenly in dB, the reface's rush), the strings, choirs, sitar and the cymbal (4–7). Every hammer's
+and pluck's first click goes: the reface rises no faster than ~24 ms. Merging two operators at the same frequency
+comes out closest for the sax, bassoon, horn, FM bass and the Bösendorfer; for the rest, dropping one or passing
+through it does.
+
+**The pianos, fixed 2026-10-26.** The TX7 UPRIGHT came out five times darker (7.8 dB): its hammer (OP3) jumps to a
+quiet L1 and opens at R2, and the rate fit had set R1 to 0, so the hammer never got past its first stage. A curve
+that never rises above the fit's −40 dB floor scored a little better than one decaying too slowly, and coordinate
+descent can't leave that. The Bösendorfer released far too slowly: held 3 s for the fit, the note had died before
+the key went, so its release never counted. Now each envelope is fitted on two holds (3 s and 0.3 s), descending
+from three starts (the DX7's rates scaled; each stage as long as the DX7's; that with the release's speed from the
+short hold), no trial that stays silent where the original sounds, the best kept. UPRIGHT 7.8 → 2.2 dB (brightness
+at C2 27.0 → 28.3 harmonics, was 5.2), Bösendorfer 6.2 → 4.2; the rest the same or closer but the upright bass
+(2.6 → 3.6).
 
 ### On the DX (2026-10-26, `tools/voiceProbe.ts instruments`)
 
@@ -414,3 +425,15 @@ Before the decay was understood the drums came out 4–13 dB quieter on the DX (
 its carrier falling at R2 123, was silent). Now they're within about 3 dB, the hi-hat varying from hit to hit (one
 take in three much quieter). The snare is noisier on the DX than in the engine, as the engine's fed-back carriers
 under fast modulation are (above).
+
+The pianos on the DX (`local/pianos_dx.ts`, each original by the seed that picks it), peak and brightness:
+
+| Original | C2 DX / engine | C4 DX / engine |
+|---|---|---|
+| STEINWAY | −30.2 / −29.9 dB, 8.7 / 8.3 H | −31.9 / −31.5, 4.9 / 5.0 |
+| Bösendorfer | −29.7 / −29.4, 14.0 / 13.5 | −30.4 / −29.2, 5.6 / 5.4 |
+| TX7 UPRIGHT | −29.3 / −28.6, 22.6 / 24.0 | −29.2 / −29.4, 5.0 / 5.2 |
+| AC.PNO 1.1 | −28.1 / −27.9, 5.4 / 5.4 | −31.2 / −30.1, 1.9 / 1.9 |
+| GOOD PIANO | −30.6 / −30.6, 13.4 / 13.5 | −32.5 / −31.8, 2.5 / 2.5 |
+| PianoBo 7 | −28.7 / −29.0, 6.2 / 6.3 | −30.4 / −29.4, 2.5 / 2.4 |
+

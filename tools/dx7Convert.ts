@@ -28,7 +28,7 @@ import { rng as dxRng } from '../../volca-fm-generator/src/generator/random'
 import { attackTime, centroid, decayTime, envelope, flatness, slice, spectrum, toDb } from '../src/engine/measure'
 import { renderNote } from '../src/engine/render'
 import { envelopeDb } from '../src/engine/synth'
-import { ampModDb, egLevelDb, kscDb, levelDb, lfoDelayS, lfoHz, pitchEgSemitonesPerS, pitchModSemitones, velocityDb } from '../src/engine/tables'
+import { ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, egLevelDb, kscDb, releaseDbPerS, levelDb, lfoDelayS, lfoHz, pitchEgSemitonesPerS, pitchModSemitones, velocityDb } from '../src/engine/tables'
 import { ALGORITHMS } from '../src/params/algorithms'
 import { fixedBytes, ratioBytes } from '../src/params/display'
 import { initVoice } from '../src/params/init'
@@ -89,7 +89,7 @@ export const dxLevelAt = (v: DxVoice, n: number, note: number) =>
 const dxQrateBoost = (note: number, sens: number) => (sens * Math.min(31, Math.max(0, Math.floor(note / 3) - 7))) >> 3
 
 /** The DX7's envelope as the volca engine runs it (MSFA's env.cc), dB against full, every `stepS`: held `holdS`. */
-export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: number, rateBoost: number, holdS: number, totalS: number, stepS: number): number[] {
+export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: number, rateBoost: number, holdS: number, totalS: number, stepS: number, stageStarts?: number[]): number[] {
   const subSteps = 8
   const incScale = (44100 / 64) * (stepS / subSteps)
   let level = 0
@@ -98,8 +98,10 @@ export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: n
   let target = 0
   let rising = false
   let inc = 0
+  let now = 0
   const advance = (i: number) => {
     ix = i
+    if (stageStarts) stageStarts[i] = now
     if (i >= 4) return
     target = Math.max(16, ((scaleOutLevel(levels[i]) >> 1) << 6) + outLevelUnits - 4256)
     rising = target > level
@@ -110,8 +112,9 @@ export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: n
   const full = outLevelUnits + (63 << 6) - 4256
   const out: number[] = []
   for (let k = 0; k * stepS < totalS; k++) {
-    if (down && k * stepS >= holdS) { down = false; advance(3) }
+    if (down && k * stepS >= holdS) { now = k * stepS; down = false; advance(3) }
     for (let s = 0; s < subSteps; s++) {
+      now = (k + s / subSteps) * stepS
       if (ix < 3 || (ix < 4 && !down)) {
         if (rising) {
           if (level < 1716) level = 1716
@@ -135,36 +138,79 @@ export const EG_STEP = 0.005
 export const EG_HOLD = 3
 export const EG_TOTAL = 5
 /** Curve distance, dB, the start weighted more (an attack of 10 ms is as much the sound as a 3 s fade). */
-function curveError(a: number[], b: number[]): number {
+function curveError(a: number[], b: number[], hold = EG_HOLD): number {
   let e = 0
   let w = 0
   for (let k = 0; k < a.length; k++) {
     const t = k * EG_STEP
-    const wt = 1 / (t < EG_HOLD ? t + 0.05 : t - EG_HOLD + 0.05)
+    const wt = 1 / (t < hold ? t + 0.05 : t - hold + 0.05)
     e += Math.abs(Math.max(-40, a[k]) - Math.max(-40, b[k])) * wt
     w += wt
   }
   return e / w
 }
 
-/** Rates fitted to the DX7 envelope's curve: coordinate descent from the scaled rates. */
-export function fitRates(target: number[], levels: number[], start: number[], free = [0, 1, 2, 3]): number[] {
-  const rates = [...start]
-  let best = curveError(target, envelopeDb(rates, levels, EG_HOLD, EG_TOTAL, EG_STEP))
-  for (let pass = 0; pass < 3; pass++) {
-    let moved = false
-    for (const i of free) {
-      for (let r = 0; r <= 127; r++) {
-        if (r === rates[i]) continue
-        const trial = [...rates]
-        trial[i] = r
-        const e = curveError(target, envelopeDb(trial, levels, EG_HOLD, EG_TOTAL, EG_STEP))
-        if (e < best - 1e-6) { best = e; rates[i] = r; moved = true }
-      }
+/** The DX7 envelope as fitted: held long (its whole course) and held short (its release from where it is). */
+export interface EgTarget { curve: number[]; hold: number; total: number }
+const egError = (targets: readonly EgTarget[], rates: number[], levels: number[]) =>
+  targets.reduce((e, t) => e + curveError(t.curve, envelopeDb(rates, levels, t.hold, t.total, EG_STEP), t.hold), 0)
+
+/** The reface rate whose stage, from one level to the next (dB), takes as long as `seconds`: a rise approaches 1.5 ×
+ *  its target in amplitude, a fall goes evenly in dB (the release, stage 3, by its own table). */
+function rateForStage(stage: number, fromDb: number, toDb: number, seconds: number): number {
+  const time = (r: number) => {
+    if (toDb > fromDb) {
+      const a0 = fromDb <= -119 ? 0 : 10 ** (fromDb / 20)
+      const t = 10 ** (toDb / 20)
+      return attackTau(r) * Math.log((ATTACK_OVERSHOOT * t - a0) / (ATTACK_OVERSHOOT * t - t))
     }
-    if (!moved) break
+    return (Math.min(fromDb, 0) - Math.max(toDb, -96)) / (stage === 3 ? releaseDbPerS : decayDbPerS)(r)
+  }
+  return invert((r) => Math.log(Math.max(1e-4, time(r))), Math.log(Math.max(1e-4, seconds)))
+}
+
+/** Each stage's rate so it takes as long as the DX7's (`stages`: when each began, from dxEnvelopeDb). */
+function stageRates(levels: number[], start: number[], free: number[], stages: number[]): number[] {
+  const rates = [...start]
+  const db = levels.map((l) => (l === 0 ? -120 : egLevelDb(l)))
+  const from = [-120, db[0], db[1], db[2]]
+  for (const i of free) {
+    const begin = stages[i]
+    if (begin === undefined || i === 3) continue
+    // a stage the DX7 doesn't finish while held lasts the hold, at least
+    const end = i < 2 ? stages[i + 1] : stages[3]
+    const seconds = end === undefined ? EG_TOTAL : end - begin
+    if (Math.abs(from[i] - db[i]) > 0.5) rates[i] = rateForStage(i, from[i], db[i], Math.max(0.001, seconds))
   }
   return rates
+}
+
+/** Rates fitted to the DX7 envelope: coordinate descent on the curves from each start, the best kept. A trial that
+ *  never rises above the floor where the original does is no fit (it would win by being flat). */
+export function fitRates(targets: readonly EgTarget[], levels: number[], starts: number[][], free = [0, 1, 2, 3]): number[] {
+  const audible = (c: number[]) => c.some((x) => x > -40)
+  const wantAudible = audible(targets[0].curve)
+  let bestOf: { rates: number[]; e: number } | null = null
+  for (const start of starts) {
+    const rates = [...start]
+    let best = egError(targets, rates, levels)
+    for (let pass = 0; pass < 3; pass++) {
+      let moved = false
+      for (const i of free) {
+        for (let r = 0; r <= 127; r++) {
+          if (r === rates[i]) continue
+          const trial = [...rates]
+          trial[i] = r
+          if (wantAudible && !audible(envelopeDb(trial, levels, EG_HOLD, EG_TOTAL, EG_STEP))) continue
+          const e = egError(targets, trial, levels)
+          if (e < best - 1e-6) { best = e; rates[i] = r; moved = true }
+        }
+      }
+      if (!moved) break
+    }
+    if (!bestOf || best < bestOf.e) bestOf = { rates, e: best }
+  }
+  return bestOf!.rates
 }
 
 /** The keyboard level scaling of one side: depth and curve closest to the DX7's dB over those notes. */
@@ -298,7 +344,8 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
   const levels = dxLevels.map((l) => (l === 0 ? 0 : invert(egLevelDb, dxEgDb(l), 1, 127)))
   const outUnits = Math.min(127, scaleOutLevel(at('outputLevel'))) << 5
   // dB against the operator's own top (the reface adds the output level apart)
-  const egOnly = dxEnvelopeDb(dxRates, dxLevels, outUnits, dxQrateBoost(60, at('rateScaling')), EG_HOLD, EG_TOTAL, EG_STEP)
+  const stages: number[] = []
+  const egOnly = dxEnvelopeDb(dxRates, dxLevels, outUnits, dxQrateBoost(60, at('rateScaling')), EG_HOLD, EG_TOTAL, EG_STEP, stages)
   // the attack by when it gets to the top: the DX7 climbs evenly in dB, the reface rushes and slows into the top, so
   // the curves can't meet early; the time they arrive can
   // a modulator's early level is brightness: there the curve itself matters more than when it arrives
@@ -314,18 +361,32 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
     }
     if (want >= 0) for (let r = 127; r >= 0; r--) if (err(r) < err(r1) - 1e-9 || r === 127) r1 = r
   }
-  const rates = fitRates(egOnly, levels, [r1, ...dxRates.slice(1).map((r) => Math.round((r * 127) / 99))], carrier ? [1, 2, 3] : [0, 1, 2, 3])
+  // the release counts too: held long the note has often died before the key goes, so also held short
+  const boost = dxQrateBoost(60, at('rateScaling'))
+  const targets: EgTarget[] = [
+    { curve: egOnly, hold: EG_HOLD, total: EG_TOTAL },
+    { curve: dxEnvelopeDb(dxRates, dxLevels, outUnits, boost, 0.3, 2.3, EG_STEP), hold: 0.3, total: 2.3 },
+  ]
+  const free = carrier ? [1, 2, 3] : [0, 1, 2, 3]
+  const scaled = [r1, ...dxRates.slice(1).map((r) => Math.round((r * 127) / 99))]
+  // the release's speed from the short hold: how fast the DX7 falls 30 dB from where it is when the key goes
+  const short = targets[1].curve
+  const k0 = Math.round(0.3 / EG_STEP)
+  const k30 = short.findIndex((x, i) => i > k0 && x < short[k0] - 30)
+  const release = short[k0] > -50 ? invert((r) => Math.log(releaseDbPerS(r)), Math.log(30 / (Math.max(1, (k30 < 0 ? short.length : k30) - k0) * EG_STEP))) : scaled[3]
+  const staged = stageRates(levels, scaled, free, stages)
+  const rates = fitRates(targets, levels, [scaled, staged, [...staged.slice(0, 3), release]], free)
   // a first fall faster than this right after the attack takes the note's peak away on the DX (docs/SOUND.md). Where
   // it was wanted faster and the DX7's third stage only holds (L3 = L2: drums, plucks), fall at the limit for a
   // moment, then fast: the DX plays that alike every time
   let eg = { rates, levels }
   if (levels[1] < levels[0] && rates[1] > FIRST_FALL_MAX) {
     const capped = { rates: [rates[0], FIRST_FALL_MAX, rates[2], rates[3]], levels }
-    const err = (e: { rates: number[]; levels: number[] }) => curveError(egOnly, envelopeDb(e.rates, e.levels, EG_HOLD, EG_TOTAL, EG_STEP))
+    const err = (e: { rates: number[]; levels: number[] }) => egError(targets, e.rates, e.levels)
     eg = capped
     if (dxLevels[1] === dxLevels[2]) for (let mid = levels[0] - 4; mid > levels[1]; mid -= 4) {
       const ls = [levels[0], mid, levels[1], levels[3]]
-      const two = { rates: fitRates(egOnly, ls, [rates[0], FIRST_FALL_MAX, rates[1], rates[3]], [2]), levels: ls }
+      const two = { rates: fitRates(targets, ls, [[rates[0], FIRST_FALL_MAX, rates[1], rates[3]]], [2]), levels: ls }
       if (err(two) < err(eg)) eg = two
     }
   }

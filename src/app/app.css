@@ -399,7 +399,9 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 /* open, the tab is the same plate and edge, and runs down to the bar's edge: one piece with the panel */
 .style-tab--open, .style-tab--open:disabled { background: #4a372b; border: 2px solid var(--dx-signature); border-bottom-color: transparent;
   border-radius: 6px 6px 0 0; color: var(--ink); font-weight: 600; opacity: 1; z-index: 26; }
-.style-tab--open::after { content: ''; position: absolute; left: -2px; right: -2px; top: 100%; height: var(--tab-drop, 8px);
+/* it hangs from the tab's padding box, 2px (the bottom border) above the tab's edge: that much longer, or the bar shows
+   through as a dark line above the panel */
+.style-tab--open::after { content: ''; position: absolute; left: -2px; right: -2px; top: 100%; height: calc(var(--tab-drop, 8px) + 2px);
   background: #4a372b; border: 2px solid var(--dx-signature); border-top: 0; border-bottom: 0; }
 .style-sheet__body { flex: 1; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 14px 16px; }
 .style-sheet__foot { display: grid; gap: 8px; padding: 10px 16px 12px; border-top: 1px solid #6b5444; background: #2b2019; }

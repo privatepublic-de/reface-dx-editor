@@ -168,7 +168,9 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
       ],
     },
     branch: { carrier: { ratio: [1, 2], level: [96, 108], feedback: [118, 127], square: true }, modulator: { fixed: [1500, 6000], level: [118, 127], feedback: [120, 127], square: true }, solo: { ratio: [1, 2], level: [96, 108], feedback: [122, 127], square: true } },
-    graft: { ratio: [1, 3.5], level: [60, 100], noise: true },
+    // noise only comes from high levels (in the probe engine feedback follows the operator's level, as on the DX7:
+    // flatness 0.03 at 110, 0.3 at 120; whether the reface does too, its feedback takes will tell)
+    graft: { ratio: [1, 3.5], level: [106, 124], noise: true },
   },
   // dense inharmonic: three modulators into one carrier, none at whole ratios, one buzzing
   metallic: {

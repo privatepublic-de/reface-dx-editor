@@ -53,8 +53,9 @@ with GitHub Pages once the repository is on GitHub.
   DX; export as a bank), and voices kept in this browser (keep, import and export `.syx`, search, rename). A
   click plays a voice on the DX; nothing is stored until you Store. **Store** always means the DX's memory,
   **Export** always means a `.syx` file. **DX7 voices:** importing a DX7 `.syx` (one voice or a 32-voice bank)
-  opens a window with their names: click one to hear it on the DX converted to four operators (a few seconds),
-  tick the ones you want, and they go into the library.
+  opens a window with their names and converts them all to four operators in the background (a bank in under a
+  minute; a voice you click goes first): click one to hear it on the DX, tick the ones you want, and they go into
+  the library.
 - **DX settings:** the DX's own settings (MIDI channels, MIDI Control, Local, master tune and transpose,
   tempo, pedal, speakers, auto power-off, contrast), live.
 - **Keyboard:** three octaves to play the DX, soft at the top of a key and hard at the front, and a mod wheel.

@@ -538,6 +538,11 @@ button.link { background: none; border: none; padding: 0 4px; color: var(--ink-d
 .dx7-import__name { font: 500 15px var(--font-narrow); letter-spacing: .04em; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
 .dx7-import__state { font-size: 12px; text-align: right; }
 .dx7-import__state.error { color: #e88; }
+/* waiting its turn: a faint ring; converting: turning */
+.spinner { justify-self: end; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffffff1c; }
+.spinner.on { border-top-color: var(--screen-ink); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner.on { animation: none; border-color: var(--screen-ink); opacity: .6; } }
 @media (min-width: 1000px) {
   .dx7-import .style-sheet__body { grid-template-columns: minmax(0, 1fr); }
   .dx7-import__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }

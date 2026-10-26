@@ -1,17 +1,20 @@
-// Init and the Style sheet (PLAN §8). Init is the plain VOICE INIT in one click. The Style tab opens a panel joined to
-// it, docked on the left. The wheel is the instrument (wheel/, after the volca fm generator): a sentence under it says
-// what the pins made, three buttons beside it go on by size (Variation, Mutate, New voice). Below, the three things
-// changed most (brightness, complexity, motion) and the envelope; how it plays, the rest of the sound and the effects
-// fold away, each saying what's set while closed. Every change plays on the DX at once (paced Parameter Changes,
-// sounding notes keep sounding). Mix goes from the voice as it was to the wheel's; Apply keeps what you hear as one
-// undo step, Cancel (or Escape) goes back. Every chip keeps its size, so nothing moves while you choose.
-import { useEffect, useRef, type ReactNode } from 'react'
+// Init and the Style window (PLAN §8). Init is the plain VOICE INIT in one click. The Style button opens a window
+// above the keyboard. The wheel is the instrument (wheel/, after the volca fm generator): a sentence under it says
+// what the pins made, three buttons beside it go on by size (Variation, Mutate, New voice), and Start from… offers
+// the classic DX7 instruments as the base instead of a tonality (wheel/instruments.ts), the pins then colour it.
+// Below, the three things changed most (brightness, complexity, motion) and the envelope; how it plays, the rest of
+// the sound and the effects fold away, each saying what's set while closed. Every change plays on the DX at once
+// (paced Parameter Changes, sounding notes keep sounding). Mix goes from the voice as it was to the wheel's; Apply
+// keeps what you hear as one undo step, Cancel (or Escape) goes back. Every chip keeps its size, so nothing moves
+// while you choose.
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { COLOUR_LABELS, COLOURS, MODE_BYTE, MODE_HINTS, MODES, SHAPE_HINTS, SPACE_LABELS, SPACES, type Mode } from '../style/choices'
 import type { Envelope } from '../style/shapes'
 import { TONALITY_HUES, TONALITY_LABELS, type Tonality } from '../wheel/choices'
 import { TONALITY_SPACE } from '../wheel/controls'
 import type { WheelVoice } from '../wheel/generate'
 import { voiceName } from '../sysex/codec'
+import { INSTRUMENT_GROUP_LABELS, INSTRUMENT_GROUPS, INSTRUMENT_IDS, instrumentName, INSTRUMENTS, type InstrumentId } from '../wheel/instruments'
 import { TONALITY_DEFS } from '../wheel/tonalities'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
@@ -56,9 +59,9 @@ const REGISTERS = [['sub', 'Sub', 'Two octaves down'], ['bass', 'Bass', 'An octa
 const PLAYS = [...MODES.map((m) => [m, { poly: 'Poly', mono: 'Mono', legato: 'Legato' }[m], MODE_HINTS[m]] as const), ['lead', 'Lead', 'One note at a time, gliding, with vibrato']] as const
 const TOUCH = [[0, 'None', 'Every note alike'], [0.5, 'Some', 'A little louder and brighter when you play harder'], [1, 'Strong', 'Much louder and brighter when you play harder']] as const
 
-/** What the pins made, in one sentence: the heaviest, then the others by how they came in. */
-function sentence(g: WheelVoice | null): ReactNode {
-  if (!g || g.mix.length < 1) return null
+/** What the pins made, in one sentence: the heaviest (or the instrument), then the others by how they came in. */
+function sentence(g: WheelVoice | null, instrument: InstrumentId | null): ReactNode {
+  if (!g || (g.mix.length < 1 && !instrument)) return null
   const name = (t: Tonality) => <b key={t} style={{ color: `hsl(${TONALITY_HUES[t]} 72% 72%)` }}>{TONALITY_LABELS[t]}</b>
   const list = (ts: Tonality[]) => ts.flatMap((t, i) => [i ? (i === ts.length - 1 ? ' and ' : ', ') : '', name(t)])
   const by = (...as: string[]) => g.roles.slice(1).filter((r) => as.includes(r.as)).map((r) => r.tonality)
@@ -66,7 +69,43 @@ function sentence(g: WheelVoice | null): ReactNode {
   if (by('branch', 'solo').length) parts.push(<>with {list(by('branch', 'solo'))} as a second part</>)
   if (by('graft').length) parts.push(<>{list(by('graft'))} in its tone</>)
   if (by('transform').length) parts.push(<>tinted by {list(by('transform'))}</>)
-  return <>{name(g.roles[0].tonality)}{parts.map((p, i) => <span key={i}>, {p}</span>)}</>
+  const base = instrument
+    ? <b style={{ color: `hsl(${TONALITY_HUES[INSTRUMENTS[instrument].family]} 72% 72%)` }}>{instrumentName(instrument)}</b>
+    : name(g.roles[0].tonality)
+  return <>{base}{parts.map((p, i) => <span key={i}>, {p}</span>)}</>
+}
+
+/** Start from…: the instruments in their groups, over the window's body. Picking one makes it the base. */
+function StartFrom({ current, onPick, onClose }: { current: InstrumentId | null; onPick(id: InstrumentId): void; onClose(): void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('.chip.on, .chip')?.focus()
+    const away = (e: PointerEvent) => {
+      const t = e.target as Element
+      if (!ref.current?.contains(t) && !t.closest?.('[data-start-toggle]')) onClose()
+    }
+    window.addEventListener('pointerdown', away)
+    return () => window.removeEventListener('pointerdown', away)
+  }, [onClose])
+  return (
+    <div className="start-from" ref={ref} role="dialog" aria-label="Start from an instrument">
+      <div className="start-from__head">
+        <h3>Start from</h3>
+        <span className="dim">Classic DX7 instruments on the reface’s four operators. Pins colour them.</span>
+        <button className="style-sheet__close" onClick={onClose} aria-label="Close">×</button>
+      </div>
+      {INSTRUMENT_GROUPS.map((g) => (
+        <div className="start-from__group" key={g}>
+          <span className="style-row__label">{INSTRUMENT_GROUP_LABELS[g]}</span>
+          <div className="chips chips--wrap">
+            {INSTRUMENT_IDS.filter((id) => INSTRUMENTS[id].group === g).map((id) => (
+              <Chip key={id} on={current === id} onClick={() => onPick(id)} title={INSTRUMENTS[id].hint}>{INSTRUMENTS[id].label}</Chip>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /** A folded section's line while closed: what's set in it, or what it does when nothing is. */
@@ -91,23 +130,29 @@ function summaries(c: SheetChoices, own: { shapeName: string; spaceName: string 
 }
 
 export function StyleSheet() {
-  const { choices: c, mix, wild, sections, keepFx, dirty, original, generated, set, setMix, setWild, setSection, setKeepFx, another, mutate, newVoice, reset, apply, cancel } = useStyle()
+  const { choices: c, mix, wild, sections, keepFx, dirty, original, generated, set, setMix, setWild, setSection, setKeepFx, another, mutate, newVoice, startFrom, reset, apply, cancel } = useStyle()
   const first = useRef<HTMLDivElement>(null)
+  const [choosing, setChoosing] = useState(false)
+  const choosingRef = useRef(choosing)
+  choosingRef.current = choosing
   const voice = useEditor((s) => s.voice)
   // what the heaviest tonality brings when nothing is chosen: shown outlined, not as a choice
   const dominant = generated?.roles[0].tonality ?? null
-  const ownShape = dominant ? TONALITY_DEFS[dominant].skeleton.shape : null
+  // an instrument's own envelope is its original's: Own draws it, no shape stands for it
+  const ownShape = dominant && !c.instrument ? TONALITY_DEFS[dominant].skeleton.shape : null
   const ownSpace = dominant ? TONALITY_SPACE[dominant] : null
   const ownMode = mix >= 1 ? MODE_BYTE.poly : original?.common[0x0d]
   const dominantName = dominant ? TONALITY_LABELS[dominant].toLowerCase() : 'tonality'
-  const neutral = !c.pins.length && !c.shape && !c.length && !c.brightness && !c.treble && c.complexity === 0.5 && !c.motion && !c.register && c.velocity === null && !c.pitchAccent && !c.mode && !c.colour && !c.space
+  const neutral = !c.pins.length && !c.instrument && !c.shape && !c.length && !c.brightness && !c.treble && c.complexity === 0.5 && !c.motion && !c.register && c.velocity === null && !c.pitchAccent && !c.mode && !c.colour && !c.space
   const said = summaries(c, { shapeName: ownShape ?? '', spaceName: ownSpace ? `the ${dominantName}’s own ${SPACE_LABELS[ownSpace].toLowerCase()}` : 'colour and space' }, keepFx, wild)
   useEffect(() => first.current?.querySelector<HTMLElement>('.wheel-centre')?.focus(), [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || (e.target as Element).closest?.('dialog')) return
       e.preventDefault()
-      useStyle.getState().cancel()
+      // Escape closes Start from first
+      if (choosingRef.current) setChoosing(false)
+      else useStyle.getState().cancel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -129,10 +174,14 @@ export function StyleSheet() {
         <div className="style-wheel" ref={first}>
           <Wheel />
           <p className="style-wheel__said" aria-live="polite">
-            {c.pins.length ? sentence(generated) : 'Click the wheel to pin a tonality, up to three.'}
+            {c.pins.length || c.instrument ? sentence(generated, c.instrument) : 'Click the wheel to pin a tonality, up to three.'}
+            {c.instrument && (
+              <button className="style-wheel__off" onClick={() => startFrom(null)} aria-label={`Without the ${instrumentName(c.instrument).toLowerCase()}`}
+                title="Back to the wheel alone">×</button>
+            )}
           </p>
           <div className="style-wheel__actions">
-            <button onClick={another} title="The same pins, the details moved">
+            <button onClick={another} title={c.instrument ? 'The same pins, the details moved; another of the instrument’s originals where it has several' : 'The same pins, the details moved'}>
               <svg viewBox="0 0 16 16" className="icon__svg" aria-hidden="true">
                 <rect x="2" y="2" width="12" height="12" rx="2.5" />
                 <circle cx="5.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="10.5" cy="10.5" r=".9" fill="currentColor" />
@@ -142,8 +191,11 @@ export function StyleSheet() {
             </button>
             <button onClick={mutate} title="The pins and the controls moved a little: somewhere else on the wheel">Mutate</button>
             <button onClick={newVoice} title="New pins anywhere on the wheel (or click its centre)">New voice</button>
+            <button data-start-toggle aria-expanded={choosing} onClick={() => setChoosing(!choosing)}
+              title="One of 41 classic DX7 instruments as the base: keys, plucked, mallets, bass, winds, brass, strings, percussion, voices">Start from…</button>
           </div>
         </div>
+        {choosing && <StartFrom current={c.instrument} onPick={(id) => { startFrom(id); setChoosing(false) }} onClose={() => setChoosing(false)} />}
 
         <div className="style-controls">
         <div className="style-rows">
@@ -154,7 +206,7 @@ export function StyleSheet() {
           <Row label="Envelope">
             <div className="chips chips--8 chips--drawn">
               <Chip on={!c.shape} onClick={() => set({ shape: null })}
-                title={`${ownShape ? `The ${dominantName}’s own: ${ENVELOPE_LABELS[ownShape].toLowerCase()}` : 'The tonality’s own'}. Drawn: the envelope you hear, as the DX plays it`}>
+                title={`${c.instrument ? `The ${instrumentName(c.instrument).toLowerCase()}’s own` : ownShape ? `The ${dominantName}’s own: ${ENVELOPE_LABELS[ownShape].toLowerCase()}` : 'The tonality’s own'}. Drawn: the envelope you hear, as the DX plays it`}>
                 {!c.shape && voice ? <OwnCurve voice={voice} /> : <OwnSign />}
                 <span>Own</span>
               </Chip>

@@ -8,6 +8,7 @@ import type { Envelope } from '../style/shapes'
 import { voiceName, type Voice } from '../sysex/codec'
 import { NO_PINS, REGISTERS, type Pin, type WheelChoices } from '../wheel/choices'
 import { freshChoices, MAX_PINS, mutateChoices } from '../wheel/explore'
+import { isInstrument, type InstrumentId } from '../wheel/instruments'
 import type { WheelVoice } from '../wheel/generate'
 import { wheelPreview } from '../wheel/preview'
 import { useEditor } from './store'
@@ -61,6 +62,8 @@ export interface StyleState extends Saved {
   mutate(): void
   /** a fresh roll of the wheel */
   newVoice(): void
+  /** an instrument as the base, the pins cleared; null goes back to the wheel alone */
+  startFrom(id: InstrumentId | null): void
   reset(): void
   open(): void
   apply(): void
@@ -84,6 +87,7 @@ function sanitize(c: Record<string, unknown>): SheetChoices {
     : []
   return {
     pins,
+    instrument: isInstrument(c.instrument) ? c.instrument : null,
     shape: oneOf<Envelope>(c.shape, [...SHAPES, 'swell']),
     length: num(c.length, -1, 1, 0),
     brightness: num(c.brightness, -1, 1, 0),
@@ -184,6 +188,10 @@ export const useStyle = create<StyleState>((set, get) => {
     another: () => update({ seed: newSeed() }),
     mutate: () => update({ choices: mutateChoices(get().choices, rng(newSeed()), withId) }),
     newVoice: () => update({ choices: freshChoices(get().choices, rng(newSeed()), withId), seed: newSeed(), selectedPin: null }),
+    // an instrument starts as it is: no pins, its own envelope and length, a new seed (another of its originals)
+    startFrom: (instrument) => update(instrument
+      ? { choices: { ...get().choices, pins: [], instrument, shape: null, length: 0 }, seed: newSeed(), selectedPin: null }
+      : { choices: { ...get().choices, instrument: null } }),
     reset: () => update({ choices: NONE, selectedPin: null }),
     open() {
       const original = useEditor.getState().beginStyle()

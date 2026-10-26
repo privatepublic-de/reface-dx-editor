@@ -7,6 +7,7 @@ import type { Envelope } from '../src/style/shapes'
 import { voiceName, voiceProblems } from '../src/sysex/codec'
 import { angleOf, mixOf, NO_PINS, REGISTERS, SECTOR, TONALITIES, type Pin, type Tonality, type WheelChoices } from '../src/wheel/choices'
 import { BRANCH_SHARE, generateWheel, wheelName } from '../src/wheel/generate'
+import { INSTRUMENT_IDS, INSTRUMENTS, instrumentVoice, type InstrumentId } from '../src/wheel/instruments'
 import { findLayout } from '../src/wheel/layout'
 import { ensureAudible, levelLoudness, loudness, SILENT_DB, TARGET_DB } from '../src/wheel/loudness'
 import { rng } from '../src/style/random'
@@ -323,5 +324,55 @@ describe('the controls (measured with the probe engine)', () => {
     expect(gen('bell').voice.common[0x20]).toBe(7)
     const v = gen('bell', { colour: 'chorus', space: 'echo' }).voice
     expect([v.common[0x1d], v.common[0x20]]).toEqual([3, 6])
+  })
+})
+
+describe('instruments to start from (converted from the DX7, tools/fromDx7.ts)', () => {
+  const start = (id: InstrumentId, pins: Pin[] = [], seed = 1, wild = 0) => generateWheel({ ...NO_PINS, instrument: id, pins }, { seed, wild })
+
+  it('every original is a valid voice, named within 10 characters, about as close to the DX7 as measured', () => {
+    for (const id of INSTRUMENT_IDS) {
+      const { label, variants } = INSTRUMENTS[id]
+      expect(label.length).toBeLessThanOrEqual(10)
+      expect(variants.length).toBeGreaterThan(0)
+      variants.forEach((x, k) => {
+        expect(voiceProblems(instrumentVoice(id, k)), `${id} ${k}`).toEqual([])
+        expect(x.distance, `${id} ${k}`).toBeLessThan(10)
+      })
+    }
+  })
+
+  it('on its own at Wild none it is the original: every operator as converted but the levelled output levels', () => {
+    for (const id of INSTRUMENT_IDS) {
+      const g = start(id)
+      const original = INSTRUMENTS[id].variants.map((_, k) => instrumentVoice(id, k))
+      const same = original.some((o) => o.common[0x10] === g.voice.common[0x10] &&
+        o.ops.every((op, i) => op.every((b, j) => j === 0x12 || b === g.voice.ops[i][j])))
+      expect(same, id).toBe(true)
+      expect(voiceName(g.voice)).toBe(INSTRUMENTS[id].label)
+      expect(g.roles[0].tonality).toBe(INSTRUMENTS[id].family)
+      expect(Math.abs(g.loudness - TARGET_DB), id).toBeLessThan(3)
+    }
+  })
+
+  it('the seed picks among its originals', () => {
+    const id = INSTRUMENT_IDS.find((x) => INSTRUMENTS[x].variants.length > 1)!
+    const algorithms = new Set(Array.from({ length: 30 }, (_, s) => start(id, [], s).voice.ops.map((o) => [...o].join()).join('|')))
+    expect(algorithms.size).toBe(INSTRUMENTS[id].variants.length)
+  })
+
+  it('pins colour it: light as a transform, heavy as a voice of their own; the name gets the adjective', () => {
+    const light = start('epiano', [pin('glass', 0.5, 0.15)])
+    expect(light.roles.map((r) => r.as)).toEqual(['skeleton', 'transform'])
+    const heavy = start('epiano', [pin('organ', 0.5, 0.9)])
+    expect(['branch', 'solo', 'graft']).toContain(heavy.roles[1].as)
+    expect(voiceProblems(heavy.voice)).toEqual([])
+    expect(voiceName(light.voice).length).toBeLessThanOrEqual(10)
+  })
+
+  it('a chosen envelope replaces the original’s', () => {
+    const own = start('vibraphone')
+    const pad = generateWheel({ ...NO_PINS, instrument: 'vibraphone', shape: 'pad' }, { seed: 1, wild: 0 })
+    expect(pad.voice.ops.map((o) => [...o.subarray(1, 9)].join())).not.toEqual(own.voice.ops.map((o) => [...o.subarray(1, 9)].join()))
   })
 })

@@ -2,6 +2,7 @@
 // (its choices.ts) with the same names, order and hues, so the two wheels look and read alike.
 import type { Colour, Mode, Space } from '../style/choices'
 import type { Envelope } from '../style/shapes'
+import type { InstrumentId } from './instruments'
 
 /** The twelve tonalities clockwise from the top of the wheel; neighbours sound close. */
 export const TONALITIES = ['noise', 'metallic', 'bell', 'glass', 'tine', 'wooden', 'organ', 'warm', 'reed', 'brass', 'string', 'breath'] as const
@@ -56,6 +57,8 @@ export const REGISTER_LABELS: Record<Register, string> = { sub: 'Sub', bass: 'Ba
  *  voice in the tonality's own way. */
 export interface WheelChoices {
   pins: Pin[]
+  /** an instrument to start from: the base of the voice in place of the heaviest pin, the pins colour it */
+  instrument: InstrumentId | null
   /** null: the dominant tonality's own */
   shape: Envelope | null
   /** −1 short … +1 long */
@@ -83,7 +86,7 @@ export interface WheelChoices {
 }
 
 export const NO_PINS: WheelChoices = {
-  pins: [], shape: null, length: 0, brightness: 0, treble: 0, complexity: 0.5, motion: 0, register: null, velocity: null, pitchAccent: false,
+  pins: [], instrument: null, shape: null, length: 0, brightness: 0, treble: 0, complexity: 0.5, motion: 0, register: null, velocity: null, pitchAccent: false,
   mode: null, colour: null, space: null,
 }
 

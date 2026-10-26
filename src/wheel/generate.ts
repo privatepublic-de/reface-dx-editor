@@ -14,6 +14,7 @@ import { applyLength, rolesOf } from '../style/transforms'
 import { mixOf, TONALITIES, type MixPart, type Tonality, type WheelChoices } from './choices'
 import { applyBrightness, applyComplexity, applyEffects, applyMotion, applyPitchAccent, applyRegister, applyTreble, applyVelocity, TONALITY_SPACE } from './controls'
 import { applyLayout, byImportance, findLayout, type Layout, type Need } from './layout'
+import { INSTRUMENTS, instrumentVoice } from './instruments'
 import { ensureAudible, levelLoudness, rescue, SILENT_DB } from './loudness'
 import { applyOpSpec, buildSkeleton, fastOps, TONALITY_DEFS, type OpSpec } from './tonalities'
 import { clamp, isNoiseOp, level, ratio, roles as rolesNow, setLevel, setRatio, sounding, transientBy, TRANSFORMS } from './transforms'
@@ -53,26 +54,24 @@ export function generateWheel(c: WheelChoices, { seed, wild = 0 }: WheelOptions)
   const rng = makeRng(seed)
   const spread = spreadOf(wild)
   const mix = mixOf(c.pins)
+  const inst = c.instrument ? INSTRUMENTS[c.instrument] : null
   // no pins: a tonality picked by the seed, as it comes
-  if (!mix.length) mix.push({ tonality: rng.pick(TONALITIES), weight: 1, intensity: 0.5 })
-  const [dominant, ...rest] = mix
-  const { skeleton } = TONALITY_DEFS[dominant.tonality]
+  if (!inst && !mix.length) mix.push({ tonality: rng.pick(TONALITIES), weight: 1, intensity: 0.5 })
+  // an instrument is the base at full weight, in its family's colour; every pin colours it
+  const [dominant, ...rest] = inst ? [{ tonality: inst.family, weight: 1, intensity: 0.5 }, ...mix] : mix
 
-  const v = buildSkeleton(skeleton, rng, spread)
-  const shape = c.shape ?? skeleton.shape
-  applyShape(v, shape, rng, spread)
-  applyTransients(v, fastOps(skeleton))
-  if (skeleton.pitchBlip && shape !== 'swell') applyPitchBlip(v, skeleton.pitchBlip)
-  // a chosen length takes the place of the tonality's own
-  applyLength(v, c.length || (skeleton.length ?? 0))
-  applyIntensity(v, dominant.intensity)
+  const v = inst ? instrumentVoice(c.instrument!, rng.int(0, inst.variants.length - 1)) : buildSkeleton(TONALITY_DEFS[dominant.tonality].skeleton, rng, spread)
+  if (inst) startFromInstrument(v, c, rng, spread)
+  else shapeSkeleton(v, c, dominant, rng, spread)
 
   const roles: WheelVoice['roles'] = [{ tonality: dominant.tonality, as: 'skeleton' }]
   let opTonality: (Tonality | null)[] = v.ops.map((_, op) => (sounding(v, op) ? dominant.tonality : null))
-  // the skeleton's free branches give way cheaply; once used or renumbered, they're followed by their numbers
-  let spare = (skeleton.branches ?? []).flat()
+  // the skeleton's free branches give way cheaply; once used or renumbered, they're followed by their numbers. An
+  // instrument has none: a pin that comes in as a voice of its own takes the place of its least important operators
+  let spare = inst ? [] : (TONALITY_DEFS[dominant.tonality].skeleton.branches ?? []).flat()
   for (const part of rest) {
-    const share = Math.min(1, part.weight / dominant.weight)
+    // on an instrument a pin's weight is its share outright (an instrument has no weight of its own)
+    const share = Math.min(1, inst ? part.weight : part.weight / dominant.weight)
     const placed = share >= BRANCH_SHARE ? place(v, part, share, opTonality, spare, c.shape, rng, spread) : null
     if (placed) {
       const { layout, as } = placed
@@ -106,8 +105,38 @@ export function generateWheel(c: WheelChoices, { seed, wild = 0 }: WheelOptions)
   }
   for (let op = 0; op < 4; op++) opTonality[op] = sounding(v, op) ? (opTonality[op] ?? dominant.tonality) : null
 
-  setVoiceName(v, wheelName(mix))
+  setVoiceName(v, inst ? instrumentName(inst.label, mix) : wheelName(mix))
   return { voice: v, mix, roles, opTonality, loudness }
+}
+
+/** The dominant tonality's skeleton made a voice: its envelope shape, transients, pitch blip, length and the pin's
+ *  distance from the centre. In place. */
+function shapeSkeleton(v: Voice, c: WheelChoices, dominant: MixPart, rng: Rng, spread: number) {
+  const { skeleton } = TONALITY_DEFS[dominant.tonality]
+  const shape = c.shape ?? skeleton.shape
+  applyShape(v, shape, rng, spread)
+  applyTransients(v, fastOps(skeleton))
+  if (skeleton.pitchBlip && shape !== 'swell') applyPitchBlip(v, skeleton.pitchBlip)
+  // a chosen length takes the place of the tonality's own
+  applyLength(v, c.length || (skeleton.length ?? 0))
+  applyIntensity(v, dominant.intensity)
+}
+
+/** An instrument as the base: the original as converted, its envelopes replaced only by a chosen shape. Wild moves
+ *  its envelope rates apart, up to 6 steps (at none it is the original). In place. */
+function startFromInstrument(v: Voice, c: WheelChoices, rng: Rng, spread: number) {
+  if (c.shape) applyShape(v, c.shape, rng, spread)
+  else {
+    const by = (6 * (spread - 0.3)) / 0.7
+    for (const o of v.ops) for (let i = 0x01; i <= 0x04; i++) if (o[i] < 127) o[i] = clamp(o[i] + Math.round((rng.next() * 2 - 1) * by))
+  }
+  if (c.length) applyLength(v, c.length)
+}
+
+/** An instrument's name, with the strongest pin's adjective in front when it fits ("Airy Grand"). */
+function instrumentName(label: string, mix: readonly MixPart[]): string {
+  const name = mix.length ? `${TONALITY_DEFS[mix[0].tonality].adjective} ${label}` : label
+  return name.length <= 10 ? name : label
 }
 
 /** The tonalities as the layout renumbers the operators. */

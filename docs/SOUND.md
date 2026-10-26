@@ -260,3 +260,103 @@ register and play are new for the reface. On the DX against the probe engine (`t
 Complexity moves Sine's brightness only a little (it has two light modulators to add or take away); pure is fewer
 operators, not always darker (the e-piano keeps its 1 : 1 body, brighter than body and tine together). The pitch
 accent and the register are checked in the engine only (pitch EG rates are still an estimate).
+
+## Instruments from the DX7 (PLAN §8.6)
+
+Start from… offers the volca fm generator's 41 instruments: Yamaha's DX7, TX7, TX816 and VRC voices, its own drums,
+choirs and whistle. `tools/fromDx7.ts` converts each original once into `src/wheel/instrumentVoices.ts`, with both
+engines as oracles: the volca's DX7 engine (MSFA's arithmetic) plays the original, the probe engine each candidate.
+
+**Parameters by what they do.** Ratios and fixed frequencies by the number (the DX7's fine multiplies, the reface's
+adds). Output and EG levels by dB (0.75 dB a step on the DX7, 0.375 and the EG table on the reface). Envelope rates
+fitted to the DX7 envelope's curve at C3, its rate scaling there included. A carrier's attack is set by when it
+arrives at the top: the DX7 climbs evenly in dB from −50, the reface's amplitude rushes up and slows into the top,
+so early in a slow swell the reface is louder (a pad: −23 dB at 5 ms against −48) whatever the rate. Nothing on the
+reface starts faster than ~26 ms, so the DX7's instant attacks (hammers, plucks, drums) lose their first click.
+Velocity: the reface's straight line closest to the DX7's curve over velocities 20–127, the difference at velocity
+100 added to the output level. Keyboard level scaling: the break point moves to C3, the output level is set where
+the DX7's level is at C3, each side's depth and curve fitted over C1–C3 and C3–C6. Rate scaling 2^(s/8) an octave on
+the DX7, 2^(x/127) on the reface. Detune 0.90 cents a step against 0.59. The LFO: speed and delay by Hz and seconds,
+the waves by name, pitch depth by semitones, an operator's amplitude sensitivity by the dip in dB. The pitch EG: the
+DX7 starts at L4 and moves through L1 and L2 to L3; the reface starts at L1, so one move goes, the one whose pitch
+curve is closer. The LFO's pitch modulation and the pitch EG are switched on for every operator, as the DX7 moves
+them all.
+
+**Feedback** by the harmonics: a lone fed-back operator at the operator's loudest in both engines, H2–H8 against
+the fundamental. The DX7's feedback 7 at level 99 turns to noise (flatness 0.26); the reface's never does, it makes
+noise from square waves at the top modulating deep. So a noisy DX7 voice is also tried rebuilt the reface way: what
+its noise source modulated, now under three square waves at fixed frequencies (algorithm 5), or under one beside its
+loudest other carrier (algorithm 10). The hi-hat comes out as noisy as the original that way (flatness 0.53 against
+0.51); converted operator by operator it had 0.004.
+
+**Six operators to four.** Every choice of three or four sounding operators, the modulations among them as they are
+or passed through a dropped operator; also with two carriers at the same frequency merged into one, or two such
+modulators into the same operators (their amplitudes add). Each is placed on every reface algorithm and numbering
+where the kept operators keep their roles (some modulations may go). Every candidate is played beside the original
+at C2, C3 and C4, held 1 s and released: loudness over time (from −30 dB up) and the spectrum's share in bands of
+harmonics (1, 2, 3–4, 5–8, 9–16, 17–32, above), at eight moments from 5 ms to 0.25 s after the release. The
+distance is the mean difference in dB. The three closest are fine-tuned (each operator's level, attack and first
+decay, feedback) and the best kept.
+
+Checked on simple voices first: a held 1 : 1 stack with the modulator at level 70 or 90 converts within 0.3–0.6 dB;
+a plucked sine within 0.4 dB.
+
+### The losses (2026-10-26)
+
+Distance in dB (above); brightness as the spectral centroid in harmonics, early (20 ms) and in the body (0.5 s);
+decay as the time to −20 dB within the 1 s held (∞: not within it). Original → reface.
+
+| Instrument | Original | Algorithm | Reduced | Distance dB | Bright early C2 | Body C2 | Decay C2 s | Early C4 | Decay C4 s |
+|---|---|---|---|---|---|---|---|---|---|
+| Grand | STEINWAY (Original Yamaha/TX7/TX18 #18) | 13 → 8 | without OP4, OP5 | 4.0 | 25.81→14.06 | 16.98→11.12 | ∞→∞ | 13.23→12.49 | ∞→∞ |
+| Grand | Bosendorfr (Original Yamaha/TX7/TX11 #10) | 4 → 1 | without OP4, OP5, OP6 | 7.0 | 39.17→23.60 | 23.49→17.72 | ∞→∞ | 14.29→16.54 | 0.88→0.73 |
+| Upright | UPRIGHT (Original Yamaha/TX7/TX18 #21) | 3 → 8 | without OP3, OP6 | 7.9 | 27.02→4.61 | 15.16→4.29 | ∞→∞ | 6.73→4.12 | ∞→∞ |
+| Upright | AC.PNO 1.1 (Original Yamaha/TX816/Tfi1 #1) | 16 → 3 | without OP2, OP6 | 1.7 | 5.89→5.39 | 5.25→5.11 | ∞→∞ | 1.78→1.94 | ∞→∞ |
+| Upright | GOOD PIANO (!Instruments/Keyboard/Piano/PIANO_13 #10) | 4 → 6 | without OP5, OP6 | 2.4 | 27.27→28.32 | 13.89→16.02 | ∞→∞ | 6.87→7.83 | ∞→∞ |
+| Upright | PianoBo 7\ (!Instruments/Keyboard/Piano/PIANO_08 #30) | 9 → 6 | without OP2, OP4 | 1.9 | 7.91→6.97 | 5.95→5.93 | ∞→∞ | 2.44→2.96 | 0.93→0.91 |
+| E.Piano | E.PIANO 1 (Original Yamaha/DX7 ROM1/ROM1A #11) | 5 → 8 | without OP5, OP6 | 2.9 | 4.60→4.10 | 2.98→2.64 | ∞→∞ | 3.30→3.84 | ∞→∞ |
+| Harpsichrd | HARPSICH 1 (Original Yamaha/DX7 ROM1/ROM1A #19) | 5 → 8 | without OP5, OP6 | 2.6 | 9.11→8.34 | 9.19→9.40 | ∞→∞ | 8.94→7.44 | ∞→∞ |
+| Clavinet | CLAV    1 (Original Yamaha/DX7 ROM3/ROM3A #13) | 18 → 3 | spliced without OP3, OP5 | 4.4 | 10.13→17.27 | 8.35→6.85 | ∞→∞ | 6.42→6.69 | ∞→∞ |
+| Nylon Gtr | SPANISHGTR (Original Yamaha/DX7 ROM3/ROM3B #24) | 14 → 2 | without OP1, OP2 | 0.8 | 4.88→4.21 | 3.27→3.27 | ∞→∞ | 4.80→4.83 | ∞→∞ |
+| Steel Gtr | FOLK GUIT (Original Yamaha/DX7 ROM3/ROM3B #25) | 14 → 2 | without OP1, OP2 | 1.9 | 10.34→9.48 | 7.16→6.97 | ∞→∞ | 10.11→10.45 | ∞→∞ |
+| Harp | HARP    1 (Original Yamaha/DX7 ROM1/ROM1B #29) | 3 → 6 | without OP5, OP6 | 2.0 | 5.51→4.76 | 1.53→1.54 | ∞→∞ | 3.12→3.04 | ∞→∞ |
+| Koto | KOTO (Original Yamaha/DX7 ROM1/ROM1A #23) | 2 → 1 | without OP1, OP2 | 2.0 | 15.57→16.84 | 3.13→3.14 | 0.98→0.79 | 5.41→5.87 | 0.46→0.36 |
+| Sitar | SITAR (Original Yamaha/DX7 ROM1/ROM1B #22) | 8 → 3 | without OP1, OP2 | 4.3 | 24.17→25.47 | 8.45→6.10 | ∞→∞ | 21.86→22.60 | ∞→∞ |
+| Pizzicato | PIZZ STGS (Original Yamaha/DX7 ROM4/ROM4A #18) | 2 → 8 | spliced without OP4, OP6 | 1.4 | 1.93→2.11 | 0.00→0.21 | 0.08→0.05 | 2.10→2.23 | 0.06→0.03 |
+| Vibraphone | VIBE    1 (Original Yamaha/DX7 ROM1/ROM1A #21) | 23 → 11 | without OP3, OP5 | 2.6 | 2.61→2.82 | 1.08→1.07 | 0.61→0.88 | 2.17→2.27 | 0.18→0.21 |
+| Xylophone | XYLOPHONE (Original Yamaha/DX7 ROM2/ROM2A #24) | 7 → 8 | without OP4, OP6 | 0.9 | 0.99→1.85 | 1.09→0.66 | 0.18→0.17 | 0.57→0.82 | 0.13→0.12 |
+| Glocken | GLOCKEN  1 (Original Yamaha/DX7 VRC Cartridges/VRC-101/VRC-101 KEYBORD,PLUCKD & TUNED PERCUSSION GROUP (B) #27) | 23 → 11 | all | 2.9 | 5.19→5.94 | 2.59→2.58 | ∞→∞ | 4.15→4.20 | ∞→∞ |
+| Steel Drum | STEEL DRUM (Original Yamaha/DX7 ROM1/ROM1A #27) | 15 → 8 | without OP5, OP6 | 2.3 | 3.18→2.77 | 1.20→1.24 | ∞→∞ | 2.79→2.52 | 0.64→0.64 |
+| FM Bass | BASS    1 (Original Yamaha/DX7 ROM1/ROM1A #15) | 16 → 3 | without OP5, OP6 | 3.4 | 9.50→4.56 | 1.66→1.44 | ∞→∞ | 6.79→5.83 | ∞→∞ |
+| Slap Bass | Slap.Bass (Original Yamaha/DX7II VRC Cartridges/VRC-1001_DECAY group_A(33-64) #22) | 17 → 3 | without OP3, OP4 | 3.6 | 13.28→4.83 | 2.93→3.03 | ∞→∞ | 4.64→4.48 | ∞→∞ |
+| Upright | JazzBass (Original Yamaha/DX7IIFD/DX7IIFDVoice64B #18) | 15 → 6 | without OP2, OP5 | 2.8 | 2.75→1.75 | 2.75→2.47 | 0.67→0.47 | 1.57→2.09 | 0.60→0.63 |
+| Synth Bass | SYN-BASS 1 (Original Yamaha/DX7 ROM2/ROM2B #15) | 3 → 6 | without OP5, OP6 | 1.8 | 4.55→5.60 | 2.16→2.22 | 0.69→∞ | 4.68→4.60 | ∞→∞ |
+| Oboe | OBOE (Original Yamaha/DX7 ROM2/ROM2A #3) | 3 → 6 | without OP5, OP6 | 1.6 | 6.30→9.66 | 6.32→6.32 | ∞→∞ | 6.46→8.19 | ∞→∞ |
+| Bassoon | BASSOON (Original Yamaha/DX7 ROM2/ROM2A #6) | 2 → 1 | without OP1, OP2, OP6 | 1.6 | 2.66→3.64 | 2.82→2.61 | ∞→∞ | 2.68→3.58 | ∞→∞ |
+| Sax | SAXOPHONE3 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (A) #20) | 18 → 3 | spliced without OP3, OP4 | 2.1 | 6.42→5.38 | 7.45→8.92 | ∞→∞ | 6.87→7.84 | ∞→∞ |
+| Harmonica | HARMONICA1 (Original Yamaha/DX7 ROM3/ROM3A #14) | 1 → 1 | all | 1.9 | 1.23→1.24 | 1.87→1.85 | ∞→∞ | 1.23→1.24 | ∞→∞ |
+| Accordion | ACCORDION (Original Yamaha/DX7 ROM3/ROM3B #19) | 4 → 8 | spliced without OP3, OP5 | 3.2 | 3.66→2.46 | 3.31→2.59 | ∞→∞ | 3.15→2.12 | ∞→∞ |
+| Trumpet | BR TRUMPET (Original Yamaha/DX7 ROM3/ROM3A #6) | 18 → 3 | without OP4, OP5, OP6 | 4.8 | 1.40→3.19 | 10.09→8.70 | 0.20→0.34 | 7.23→3.88 | ∞→∞ |
+| Trombone | TROMBONE 1 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #6) | 18 → 5 | without OP5, OP6 | 5.5 | 1.58→3.93 | 14.92→14.15 | ∞→∞ | 2.36→2.99 | ∞→∞ |
+| Horn | HORN     1 (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (A) #22) | 10 → 1 | without OP4, OP5, OP6 | 3.9 | 1.60→1.39 | 2.60→2.00 | ∞→∞ | 1.25→1.22 | ∞→∞ |
+| Tuba | TUBA (Original Yamaha/DX7 VRC Cartridges/VRC-102/VRC-102 WIND INSTRUMENT GROUP (B) #11) | 18 → 3 | spliced without OP2, OP4 | 4.6 | 1.06→5.02 | 2.11→2.49 | ∞→∞ | 4.52→6.82 | ∞→∞ |
+| Brass Sect | BRASS   1 (Original Yamaha/DX7 ROM1/ROM1A #1) | 22 → 8 | without OP4, OP5 | 4.5 | 9.35→6.21 | 3.90→6.94 | ∞→∞ | 7.60→4.46 | ∞→∞ |
+| Violin | VIOLIN   4 (Original Yamaha/DX7 VRC Cartridges/VRC-103/VRC-103 SUSTAIN GROUP (A) #4) | 18 → 3 | spliced without OP3, OP5 | 5.1 | 65.95→57.28 | 16.52→19.07 | ∞→∞ | 37.97→45.72 | ∞→∞ |
+| Cello | CELLO  7.4 (Original Yamaha/TX816/Tfi4 #7) | 16 → 3 | spliced without OP2, OP3 | 5.5 | 8.99→9.86 | 5.57→5.80 | ∞→∞ | 7.81→10.64 | ∞→∞ |
+| Kick | our own | 5 → 1 | all | 1.8 | 0.55→0.58 | 0.39→0.39 | 0.17→0.14 | 0.14→0.14 | 0.17→0.14 |
+| Snare | our own | 5 → 10 | noise rebuilt: one square wave into its carrier, OP1 for the tone | 1.7 | 76.50→80.59 | 7.53→83.73 | 0.12→0.07 | 19.42→20.32 | 0.12→0.07 |
+| Tom | our own | 5 → 1 | all | 1.1 | 1.40→1.28 | 1.03→1.03 | 0.28→0.24 | 1.33→1.24 | 0.31→0.28 |
+| Hi-Hat | our own | 5 → 5 | noise rebuilt: three square waves into its carrier | 1.3 | 88.82→88.82 | 0.00→0.21 | 0.05→0.01 | 22.63→22.91 | 0.04→0.01 |
+| Cymbal | our own | 5 → 8 | without OP1, OP2 | 7.8 | 89.79→85.41 | 86.28→72.71 | 0.96→0.86 | 22.80→23.01 | 0.98→0.87 |
+| Cowbell | our own | 32 → 6 | all | 0.8 | 4.86→4.90 | 4.91→4.90 | 0.10→0.07 | 1.22→1.23 | 0.10→0.07 |
+| Timpani | TIMPANI (Original Yamaha/DX7 ROM3/ROM3A #20) | 16 → 3 | without OP3, OP4 | 1.7 | 2.01→2.23 | 1.30→1.29 | 0.38→0.29 | 1.70→1.70 | 0.50→0.47 |
+| Choir | our own | 32 → 12 | without OP2, OP4 | 5.8 | 2.82→2.25 | 1.32→1.37 | ∞→∞ | 2.81→2.22 | ∞→∞ |
+| Ooh | our own | 32 → 9 | all | 4.6 | 1.31→1.29 | 1.04→1.05 | ∞→∞ | 1.32→1.30 | ∞→∞ |
+| Whistle | our own | 5 → 6 | all | 1.8 | 9.58→5.51 | 8.36→5.73 | ∞→∞ | 3.03→2.08 | ∞→∞ |
+
+Most land within 3 dB: the e-piano, harpsichord, guitars, harp, koto, pizzicato, mallets, basses, winds, drums and the
+whistle. Further off: the grands (6.7 and 4.0: two 3-operator stacks and a hammer in four operators; the attack's
+first click is the reface's ~26 ms), the TX7 UPRIGHT (7.9), the brass (4.5–5.5: the DX7's slow-opening modulators
+climb evenly in dB, the reface's rush), the strings, choirs and the cymbal (5–8). Merging two operators at the same
+frequency never came out closest; dropping or passing through one did. To judge on the DX by ear.
+

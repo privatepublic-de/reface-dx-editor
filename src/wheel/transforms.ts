@@ -60,7 +60,8 @@ export function transientBy(v: Voice, op: number, a: number) {
 export function pitchBlipBy(v: Voice, from: 'above' | 'below', a: number) {
   const depth = Math.round(2 * Math.min(1, a))
   if (!depth) return
-  v.common.set([100, 127, 127, 127, 64, 64, 64, 64 + (from === 'above' ? depth : -depth)], 0x15)
+  // each note starts at L1 (measured): from there back to the note at R2 (42: ~30 ms)
+  v.common.set([127, 42, 127, 127, 64 + (from === 'above' ? depth : -depth), 64, 64, 64], 0x15)
   for (const op of roles(v).carriers) v.ops[op][0x10] = 1
 }
 

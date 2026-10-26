@@ -7,7 +7,7 @@ import { ALGORITHMS } from '../params/algorithms'
 import { fixedHzOf, ratioOf } from '../params/display'
 import type { Voice } from '../sysex/codec'
 import {
-  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, detuneFactor, egLevelDb, FEEDBACK_SMOOTHING, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
+  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, releaseDbPerS, detuneFactor, egLevelDb, FEEDBACK_SMOOTHING, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
   pitchEgSemitones, pitchEgSemitonesPerS, pitchModSemitones, rateScale, SILENT_DB, TUNING, velocityDb,
 } from './tables'
 
@@ -61,7 +61,8 @@ class Env {
       // the share of the way to the overshoot covered per sample
       this.step = 1 - Math.exp(-this.speed / (attackTau(this.rates[ix]) * this.sampleRate))
     } else {
-      this.step = (-decayDbPerS(this.rates[ix]) * this.speed) / this.sampleRate
+      // R4 after key-off is the release, faster than a decay at high rates (measured)
+      this.step = (-(ix === 3 ? releaseDbPerS : decayDbPerS)(this.rates[ix]) * this.speed) / this.sampleRate
     }
   }
 
@@ -101,9 +102,10 @@ class PitchEnv {
   init(rates: number[], levels: number[]) {
     this.rates = rates
     this.levels = levels.map(pitchEgSemitones)
-    this.value = this.levels[3]
+    // the reface starts each note at L1, not at L4 as the DX7 does (measured): R1 never sounds from a key-down
+    this.value = this.levels[0]
     this.down = true
-    this.advance(0)
+    this.advance(1)
   }
 
   keyUp() {
@@ -136,8 +138,11 @@ class Lfo {
   private phase = 0
   private inc = 0
   private wave = 0
-  private delayS = 0
+  /** the delay: seconds before it starts, seconds it takes to fade in */
+  private delay: [number, number] = [0, 0]
   private time = 0
+  /** S&H 8: which of the cycle's eight steps it is on */
+  private step = 0
   private random = 1
   private held = 0
   /** −1 … 1 */
@@ -150,7 +155,7 @@ class Lfo {
   set(v: Voice) {
     this.wave = v.common[0x11]
     this.inc = lfoHz(v.common[0x12]) / this.sampleRate
-    this.delayS = lfoDelayS(v.common[0x13])
+    this.delay = lfoDelayS(v.common[0x13])
   }
 
   keyDown() {
@@ -169,17 +174,20 @@ class Lfo {
       case 2: this.value = 2 * p - 1; break
       case 3: this.value = 1 - 2 * p; break
       case 4: this.value = p < 0.5 ? 1 : -1; break
-      default: // sample and hold, a new value each cycle; S&H 8 in eight steps (estimate)
-        if (wrapped) {
+      default: {
+        // sample and hold: a new value each cycle; S&H 8 eight times a cycle (measured)
+        const step = this.wave === 5 ? Math.floor(p * 8) : 0
+        if (wrapped || step !== this.step) {
           this.random = (this.random * 1103515245 + 12345) & 0x7fffffff
-          this.held = (this.random / 0x3fffffff) - 1
-          if (this.wave === 5) this.held = Math.round(this.held * 3.5) / 3.5
+          this.held = this.random / 0x3fffffff - 1
         }
+        this.step = step
         this.value = this.held
+      }
     }
     this.time += 1 / this.sampleRate
-    const d = this.delayS
-    this.fade = !d || this.time >= 2 * d ? 1 : this.time < d ? 0 : (this.time - d) / d
+    const [wait, fade] = this.delay
+    this.fade = this.time >= wait + fade ? 1 : this.time < wait ? 0 : (this.time - wait) / fade
   }
 }
 
@@ -236,7 +244,8 @@ class Note {
     v.ops.forEach((o, i) => {
       const s = this.ops[i]
       s.on = o[0x00] !== 0
-      s.offsetDb = levelDb(o[0x12]) + kscDb(note, o[0x0a], o[0x0b], o[0x0c], o[0x0d]) + velocityDb(velocity, o[0x11])
+      // keyboard scaling up stops at full level (measured)
+      s.offsetDb = Math.min(0, levelDb(o[0x12]) + kscDb(note, o[0x0a], o[0x0b], o[0x0c], o[0x0d])) + velocityDb(velocity, o[0x11])
       s.env.init([o[0x01], o[0x02], o[0x03], o[0x04]], [o[0x05], o[0x06], o[0x07], o[0x08]], rateScale(note, o[0x09]))
       s.hz = (o[0x15] ? fixedHzOf(o[0x16], o[0x17]) : keyHz * ratioOf(o[0x16], o[0x17])) * detuneFactor(o[0x18])
       s.square = o[0x14] !== 0

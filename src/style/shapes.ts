@@ -47,7 +47,8 @@ export function applyShape(v: Voice, shape: Envelope, rng: Rng, spread: number) 
   const algorithm = v.common[0x10]
   for (let op = 0; op < 4; op++) setEg(v, op, jitter(isCarrier(algorithm, op) ? spec.carrier : spec.modulator, rng, spread))
   // Pitch EG: rates 15–18, levels 19–1C around 64 (= no shift). A blip starts 2 semitones low.
-  v.common.set(spec.pitchBlip ? [100, 127, 127, 127, 64, 64, 64, 62] : [127, 127, 127, 127, 64, 64, 64, 64], 0x15)
+  // the reface starts each note at L1 (measured, docs/SOUND.md): the blip starts there and falls back at R2 (42: ~30 ms)
+  v.common.set(spec.pitchBlip ? [127, 42, 127, 127, 62, 64, 64, 64] : [127, 127, 127, 127, 64, 64, 64, 64], 0x15)
   for (let op = 0; op < 4; op++) v.ops[op][0x10] = spec.pitchBlip && isCarrier(algorithm, op) ? 1 : 0
 }
 

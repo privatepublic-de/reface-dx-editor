@@ -16,12 +16,11 @@ const asked = args.filter((a) => !a.startsWith('--')) as Curve[]
 
 type Row = Record<string, unknown>
 const measured: Row[] = existsSync(LOG) ? readFileSync(LOG, 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : []
-/** What a log row measured rather than where it was taken. */
-const MEASURES = ['curve', 'h', 'flatness', 'db', 'ms', 'ms20', 'ms40']
-/** The DX's latest take of a point: the same position, nothing more (a level-100 take isn't a level-127 one). */
-const dxOf = (p: Point) => [...measured].reverse().find((r) => r.curve === p.curve
+/** The DX's latest take of a point: the same position, nothing more (a level-100 take isn't a level-127 one). What a
+ *  row measured rather than where it was taken: `measures`, the keys the point's measure returns. */
+const dxOf = (p: Point, measures: readonly string[] = Object.keys(p.measure(render(p)))) => [...measured].reverse().find((r) => r.curve === p.curve
   && Object.entries(p.at).every(([k, x]) => (r[k] ?? false) === x)
-  && Object.keys(r).every((k) => MEASURES.includes(k) || k in p.at))
+  && Object.keys(r).every((k) => k === 'curve' || measures.includes(k) || k in p.at))
 
 const render = (p: Point) => Float64Array.from(renderNote(p.voice, { note: p.note, velocity: p.velocity ?? 100, holdSeconds: p.holdS, releaseSeconds: p.tailS, sampleRate: RATE }))
 
@@ -32,7 +31,7 @@ function levelError(): number {
   let sum = 0
   let n = 0
   for (const p of points('level')) {
-    const dx = dxOf(p)?.h as number[] | undefined
+    const dx = dxOf(p, ['h'])?.h as number[] | undefined
     if (!dx) continue
     const h = p.measure(render(p)).h as number[]
     for (let k = 1; k < 5; k++) { sum += Math.abs(Math.max(-60, h[k]) - Math.max(-60, dx[k])); n++ }
@@ -53,14 +52,14 @@ if (fit) {
 
 // the engine at the DX's recording level
 const ref = points('carrier')[0]
-const refDx = dxOf(ref)?.db as number | undefined
+const refDx = dxOf(ref, ['db'])?.db as number | undefined
 const offset = refDx === undefined ? 0 : refDx - (ref.measure(render(ref)).db as number)
 
 for (const curve of asked.length ? asked : CURVES) {
   const rows = points(curve).map((p) => {
     const engine = p.measure(render(p))
     if (typeof engine.db === 'number') engine.db += offset
-    return { p, dx: dxOf(p), engine }
+    return { p, dx: dxOf(p, Object.keys(engine)), engine }
   })
   if (!rows.some((r) => r.dx)) {
     console.log(`${curve}: no DX takes yet (npx vite-node tools/dxCurves.ts ${curve})`)

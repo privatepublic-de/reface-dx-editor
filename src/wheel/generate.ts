@@ -241,7 +241,8 @@ export function applyIntensity(v: Voice, intensity: number) {
 /** A short pitch fall (from above) or scoop (from below) into the note on the carriers: two semitones, at once
  *  back. In place. */
 export function applyPitchBlip(v: Voice, from: 'above' | 'below') {
-  v.common.set([100, 127, 127, 127, 64, 64, 64, from === 'above' ? 66 : 62], 0x15)
+  // the reface starts each note at L1 (measured): from there back to the note at R2 (42: ~30 ms)
+  v.common.set([127, 42, 127, 127, from === 'above' ? 66 : 62, 64, 64, 64], 0x15)
   for (let op = 0; op < 4; op++) v.ops[op][0x10] = isCarrier(v.common[0x10], op) ? 1 : 0
 }
 

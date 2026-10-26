@@ -5,7 +5,7 @@ import { ALGORITHMS } from '../src/params/algorithms'
 import { fixedBytes } from '../src/params/display'
 import { initVoice } from '../src/params/init'
 import { cloneVoice, type Voice } from '../src/sysex/codec'
-import { points } from '../tools/curves'
+import { points, type Curve, type Point } from '../tools/curves'
 import { RATE } from '../tools/dxAudio'
 import CURVES from './fixtures/dx-curves.json'
 
@@ -205,7 +205,8 @@ describe('modulation', () => {
       v.common.set([4, 100, 0, 0], 0x11)
       v.ops[0][0x0e] = 127
     })
-    expect(toDb(rms(steady(play(am))))).toBeLessThan(toDb(rms(steady(play(initVoice())))) - 3)
+    // a square LFO: half the time full, half the time ~98 dB down, so 3 dB down on average
+    expect(toDb(rms(steady(play(am))))).toBeLessThan(toDb(rms(steady(play(initVoice())))) - 2.5)
   })
 })
 
@@ -224,4 +225,39 @@ describe('notes', () => {
     const v = voice((x) => (x.ops[0][0x11] = 127))
     expect(toDb(rms(steady(play(v, { velocity: 30 }))))).toBeLessThan(toDb(rms(steady(play(v, { velocity: 120 })))) - 6)
   })
+})
+
+describe('release, LFO, pitch EG, detune and scaling, against the DX (dx-curves.json points)', () => {
+  /** How close each measure has to be: absolute, or a share of the DX's value. */
+  const TOLERANCE: Record<string, { abs?: number; share?: number }> = {
+    db: { abs: 0.6 }, swingDb: { abs: 1 }, hz: { share: 0.05 }, swing: { share: 0.05, abs: 0.1 }, centre: { abs: 0.2 },
+    semis: { abs: 0.2 }, cents: { abs: 0.5 }, ms20: { share: 0.15, abs: 25 }, ms40: { share: 0.15, abs: 25 },
+    halfMs: { share: 0.15, abs: 12 }, nearMs: { share: 0.15, abs: 12 }, startMs: { abs: 100 }, fullMs: { abs: 150 },
+  }
+  /** Beyond what a take can show: its noise floor (~75 dB down) and LFO 127's deep, fast swing in 2 ms blocks. */
+  const beyondTakes = (curve: string, at: Record<string, unknown>, key: string) =>
+    key === 'fullDb' || (curve === 'amd' && at.amd === 127) || (curve === 'lfospeed' && at.speed === 127) || (curve === 'ksc' && key === 'db' && at.kcurve === 1 && (at.note === 24 || at.note === 96))
+  const POINTS = (CURVES as unknown as { points: Record<string, { at: Record<string, unknown>; m: Record<string, number | null> }[]> }).points
+
+  const measured = (p: Point) => p.measure(Float64Array.from(renderNote(p.voice, { note: p.note, velocity: p.velocity ?? 100, holdSeconds: p.holdS, releaseSeconds: p.tailS, sampleRate: RATE })))
+
+  for (const [curve, rows] of Object.entries(POINTS)) {
+    it(curve, () => {
+      const all = points(curve as Curve)
+      // loudness against the curve's own first point: the takes' recording level isn't the engine's
+      const offset = typeof rows[0].m.db === 'number' ? rows[0].m.db - (measured(all[0]).db as number) : 0
+      for (const p of all) {
+        const row = rows.find((r) => Object.entries(r.at).every(([k, x]) => p.at[k] === x) && Object.keys(p.at).length === Object.keys(r.at).length)
+        if (!row) continue
+        const m = measured(p)
+        for (const [key, dx] of Object.entries(row.m)) {
+          const t = TOLERANCE[key]
+          if (!t || dx === null || beyondTakes(curve, p.at, key)) continue
+          const got = (m[key] as number) + (key === 'db' ? offset : 0)
+          const allowed = Math.max(t.abs ?? 0, (t.share ?? 0) * Math.abs(dx))
+          expect(Math.abs(got - dx), `${curve} ${JSON.stringify(p.at)} ${key}: DX ${dx}, engine ${got.toFixed(2)}`).toBeLessThanOrEqual(allowed)
+        }
+      }
+    })
+  }
 })

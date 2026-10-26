@@ -1,5 +1,5 @@
 {
- "source": "tools/dxCurves.ts on the reface DX, measured by tools/curves.ts: attack, decay, level 2026-10-23; carrier, eglevel, feedback, velocity 2026-10-26",
+ "source": "tools/dxCurves.ts on the reface DX, measured by tools/curves.ts: attack, decay, level 2026-10-23; carrier, eglevel, feedback, velocity 2026-10-26; release, LFO, pitch EG, detune, keyboard and rate scaling 2026-10-26 (points)",
  "attack": {
   "10": 5164,
   "20": 4908,
@@ -540,5 +540,1138 @@
    "100": -29.8,
    "127": -19.9
   }
+ },
+ "points": {
+  "release": [
+   {
+    "at": {
+     "rate": 40
+    },
+    "m": {
+     "ms20": 3500,
+     "ms40": null
+    }
+   },
+   {
+    "at": {
+     "rate": 60
+    },
+    "m": {
+     "ms20": 836,
+     "ms40": null
+    }
+   },
+   {
+    "at": {
+     "rate": 80
+    },
+    "m": {
+     "ms20": 156,
+     "ms40": 326
+    }
+   },
+   {
+    "at": {
+     "rate": 100
+    },
+    "m": {
+     "ms20": 16,
+     "ms40": 46
+    }
+   },
+   {
+    "at": {
+     "rate": 110
+    },
+    "m": {
+     "ms20": 0,
+     "ms40": 8
+    }
+   },
+   {
+    "at": {
+     "rate": 120
+    },
+    "m": {
+     "ms20": 0,
+     "ms40": 0
+    }
+   },
+   {
+    "at": {
+     "rate": 127
+    },
+    "m": {
+     "ms20": 0,
+     "ms40": 6
+    }
+   }
+  ],
+  "lfospeed": [
+   {
+    "at": {
+     "speed": 0
+    },
+    "m": {
+     "hz": 0
+    }
+   },
+   {
+    "at": {
+     "speed": 16
+    },
+    "m": {
+     "hz": 0.67
+    }
+   },
+   {
+    "at": {
+     "speed": 32
+    },
+    "m": {
+     "hz": 1.35
+    }
+   },
+   {
+    "at": {
+     "speed": 48
+    },
+    "m": {
+     "hz": 2.02
+    }
+   },
+   {
+    "at": {
+     "speed": 64
+    },
+    "m": {
+     "hz": 2.69
+    }
+   },
+   {
+    "at": {
+     "speed": 80
+    },
+    "m": {
+     "hz": 4.37
+    }
+   },
+   {
+    "at": {
+     "speed": 96
+    },
+    "m": {
+     "hz": 8.41
+    }
+   },
+   {
+    "at": {
+     "speed": 112
+    },
+    "m": {
+     "hz": 17.49
+    }
+   },
+   {
+    "at": {
+     "speed": 127
+    },
+    "m": {
+     "hz": 39.7
+    }
+   }
+  ],
+  "amd": [
+   {
+    "at": {
+     "amd": 16
+    },
+    "m": {
+     "swingDb": 1.86
+    }
+   },
+   {
+    "at": {
+     "amd": 32
+    },
+    "m": {
+     "swingDb": 6.43
+    }
+   },
+   {
+    "at": {
+     "amd": 64
+    },
+    "m": {
+     "swingDb": 24.74
+    }
+   },
+   {
+    "at": {
+     "amd": 96
+    },
+    "m": {
+     "swingDb": 55.98
+    }
+   },
+   {
+    "at": {
+     "amd": 127
+    },
+    "m": {
+     "swingDb": 81.78
+    }
+   }
+  ],
+  "pmd": [
+   {
+    "at": {
+     "pmd": 16
+    },
+    "m": {
+     "swing": 0.76,
+     "centre": -0.0
+    }
+   },
+   {
+    "at": {
+     "pmd": 32
+    },
+    "m": {
+     "swing": 3.03,
+     "centre": -0.01
+    }
+   },
+   {
+    "at": {
+     "pmd": 64
+    },
+    "m": {
+     "swing": 12.14,
+     "centre": -0.02
+    }
+   },
+   {
+    "at": {
+     "pmd": 96
+    },
+    "m": {
+     "swing": 27.31,
+     "centre": -0.04
+    }
+   },
+   {
+    "at": {
+     "pmd": 127
+    },
+    "m": {
+     "swing": 47.79,
+     "centre": -0.08
+    }
+   }
+  ],
+  "lfodelay": [
+   {
+    "at": {
+     "delay": 0
+    },
+    "m": {
+     "startMs": 100,
+     "fullMs": 100,
+     "fullDb": 81.53
+    }
+   },
+   {
+    "at": {
+     "delay": 32
+    },
+    "m": {
+     "startMs": 100,
+     "fullMs": 200,
+     "fullDb": 80.57
+    }
+   },
+   {
+    "at": {
+     "delay": 64
+    },
+    "m": {
+     "startMs": 400,
+     "fullMs": 600,
+     "fullDb": 80.04
+    }
+   },
+   {
+    "at": {
+     "delay": 96
+    },
+    "m": {
+     "startMs": 1100,
+     "fullMs": 1600,
+     "fullDb": 79.74
+    }
+   },
+   {
+    "at": {
+     "delay": 112
+    },
+    "m": {
+     "startMs": 1800,
+     "fullMs": 2200,
+     "fullDb": 80.83
+    }
+   },
+   {
+    "at": {
+     "delay": 127
+    },
+    "m": {
+     "startMs": 3000,
+     "fullMs": 3300,
+     "fullDb": 80.31
+    }
+   }
+  ],
+  "peglevel": [
+   {
+    "at": {
+     "level": 16
+    },
+    "m": {
+     "semis": -48.0
+    }
+   },
+   {
+    "at": {
+     "level": 40
+    },
+    "m": {
+     "semis": -24.0
+    }
+   },
+   {
+    "at": {
+     "level": 56
+    },
+    "m": {
+     "semis": -7.88
+    }
+   },
+   {
+    "at": {
+     "level": 60
+    },
+    "m": {
+     "semis": -3.94
+    }
+   },
+   {
+    "at": {
+     "level": 64
+    },
+    "m": {
+     "semis": -0.0
+    }
+   },
+   {
+    "at": {
+     "level": 68
+    },
+    "m": {
+     "semis": 3.93
+    }
+   },
+   {
+    "at": {
+     "level": 72
+    },
+    "m": {
+     "semis": 7.87
+    }
+   },
+   {
+    "at": {
+     "level": 88
+    },
+    "m": {
+     "semis": 24.0
+    }
+   },
+   {
+    "at": {
+     "level": 112
+    },
+    "m": {
+     "semis": 48.0
+    }
+   }
+  ],
+  "pegrate": [
+   {
+    "at": {
+     "rate": 20
+    },
+    "m": {
+     "halfMs": 399.28,
+     "nearMs": 809.79
+    }
+   },
+   {
+    "at": {
+     "rate": 40
+    },
+    "m": {
+     "halfMs": 88.71,
+     "nearMs": 193.52
+    }
+   },
+   {
+    "at": {
+     "rate": 60
+    },
+    "m": {
+     "halfMs": 1.11,
+     "nearMs": 25.61
+    }
+   },
+   {
+    "at": {
+     "rate": 80
+    },
+    "m": {
+     "halfMs": 0.4,
+     "nearMs": 0.4
+    }
+   },
+   {
+    "at": {
+     "rate": 100
+    },
+    "m": {
+     "halfMs": 1.86,
+     "nearMs": 1.86
+    }
+   },
+   {
+    "at": {
+     "rate": 120
+    },
+    "m": {
+     "halfMs": 2.16,
+     "nearMs": 2.16
+    }
+   }
+  ],
+  "detune": [
+   {
+    "at": {
+     "detune": 0
+    },
+    "m": {
+     "cents": -37.6
+    }
+   },
+   {
+    "at": {
+     "detune": 32
+    },
+    "m": {
+     "cents": -18.86
+    }
+   },
+   {
+    "at": {
+     "detune": 64
+    },
+    "m": {
+     "cents": -0.11
+    }
+   },
+   {
+    "at": {
+     "detune": 96
+    },
+    "m": {
+     "cents": 18.65
+    }
+   },
+   {
+    "at": {
+     "detune": 127
+    },
+    "m": {
+     "cents": 36.86
+    }
+   }
+  ],
+  "ksc": [
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 24
+    },
+    "m": {
+     "db": -19.99
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 36
+    },
+    "m": {
+     "db": -19.92
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 48
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 72
+    },
+    "m": {
+     "db": -37.75
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 84
+    },
+    "m": {
+     "db": -55.62
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 96
+    },
+    "m": {
+     "db": -73.57
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 24
+    },
+    "m": {
+     "db": -19.96
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 36
+    },
+    "m": {
+     "db": -19.91
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 48
+    },
+    "m": {
+     "db": -19.91
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 72
+    },
+    "m": {
+     "db": -19.92
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 84
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 3,
+     "note": 96
+    },
+    "m": {
+     "db": -20.09
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 24
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 36
+    },
+    "m": {
+     "db": -19.91
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 48
+    },
+    "m": {
+     "db": -19.91
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 72
+    },
+    "m": {
+     "db": -28.72
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 84
+    },
+    "m": {
+     "db": -55.62
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 96
+    },
+    "m": {
+     "db": -93.47
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 24
+    },
+    "m": {
+     "db": -20.05
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 36
+    },
+    "m": {
+     "db": -19.91
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 48
+    },
+    "m": {
+     "db": -19.88
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 72
+    },
+    "m": {
+     "db": -28.81
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 84
+    },
+    "m": {
+     "db": -37.84
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "depth": 64,
+     "kcurve": 0,
+     "note": 96
+    },
+    "m": {
+     "db": -46.89
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 24
+    },
+    "m": {
+     "db": -73.62
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 36
+    },
+    "m": {
+     "db": -55.64
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 48
+    },
+    "m": {
+     "db": -37.76
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 72
+    },
+    "m": {
+     "db": -19.92
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 84
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 0,
+     "note": 96
+    },
+    "m": {
+     "db": -20.09
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 24
+    },
+    "m": {
+     "db": -93.21
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 36
+    },
+    "m": {
+     "db": -55.65
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 48
+    },
+    "m": {
+     "db": -28.74
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 60
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 72
+    },
+    "m": {
+     "db": -19.92
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 84
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "depth": 127,
+     "kcurve": 1,
+     "note": 96
+    },
+    "m": {
+     "db": -20.09
+    }
+   }
+  ],
+  "ratescaling": [
+   {
+    "at": {
+     "scaling": 0,
+     "note": 36
+    },
+    "m": {
+     "ms20": 860
+    }
+   },
+   {
+    "at": {
+     "scaling": 0,
+     "note": 60
+    },
+    "m": {
+     "ms20": 880
+    }
+   },
+   {
+    "at": {
+     "scaling": 0,
+     "note": 84
+    },
+    "m": {
+     "ms20": 880
+    }
+   },
+   {
+    "at": {
+     "scaling": 64,
+     "note": 36
+    },
+    "m": {
+     "ms20": 1680
+    }
+   },
+   {
+    "at": {
+     "scaling": 64,
+     "note": 60
+    },
+    "m": {
+     "ms20": 880
+    }
+   },
+   {
+    "at": {
+     "scaling": 64,
+     "note": 84
+    },
+    "m": {
+     "ms20": 460
+    }
+   },
+   {
+    "at": {
+     "scaling": 127,
+     "note": 36
+    },
+    "m": {
+     "ms20": null
+    }
+   },
+   {
+    "at": {
+     "scaling": 127,
+     "note": 60
+    },
+    "m": {
+     "ms20": 880
+    }
+   },
+   {
+    "at": {
+     "scaling": 127,
+     "note": 84
+    },
+    "m": {
+     "ms20": 220
+    }
+   }
+  ],
+  "kscplus": [
+   {
+    "at": {
+     "side": true,
+     "kcurve": 3,
+     "note": 60
+    },
+    "m": {
+     "db": -43.49
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 3,
+     "note": 72
+    },
+    "m": {
+     "db": -25.52
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 3,
+     "note": 84
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 3,
+     "note": 96
+    },
+    "m": {
+     "db": -20.09
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 2,
+     "note": 60
+    },
+    "m": {
+     "db": -43.49
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 2,
+     "note": 72
+    },
+    "m": {
+     "db": -34.55
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 2,
+     "note": 84
+    },
+    "m": {
+     "db": -19.97
+    }
+   },
+   {
+    "at": {
+     "side": true,
+     "kcurve": 2,
+     "note": 96
+    },
+    "m": {
+     "db": -20.09
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "kcurve": 3,
+     "note": 24
+    },
+    "m": {
+     "db": -20.04
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "kcurve": 3,
+     "note": 36
+    },
+    "m": {
+     "db": -19.9
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "kcurve": 3,
+     "note": 48
+    },
+    "m": {
+     "db": -25.52
+    }
+   },
+   {
+    "at": {
+     "side": false,
+     "kcurve": 3,
+     "note": 60
+    },
+    "m": {
+     "db": -43.49
+    }
+   }
+  ]
  }
 }

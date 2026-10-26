@@ -188,8 +188,31 @@ and 0.045 at 112 (engine 0.010, 0.061).
 
 **Whole voices** (one pin per tonality and two-pin mixes): loudness within ~1–2 dB, brightness and envelope close.
 Still off: a saw modulator at 110 is ~3 dB louder in the engine, a carrier with feedback under fast modulation less
-noisy, and the DX's release after key-off at rate 127 isn't instant (−15 … −60 dB 100 ms later, depending on the
-voice). Still estimates: keyboard and rate scaling, detune, LFO, pitch EG rates, AMD.
+noisy, and after an instant release (R4 127) a bright voice leaves a low thump on the DX (−13 dB, centred ~135 Hz,
+ringing out over ~0.3 s; none after a pure sine): the DX's output stage, not its envelope, and not in the engine.
+
+### Release, LFO, pitch EG, detune and scaling, measured 2026-10-26
+
+`tools/dxCurves.ts release lfospeed amd pmd lfodelay lfowave peglevel pegrate detune ksc kscplus ratescaling`; the
+engine has each as a table (`src/engine/tables.ts`) and `test/engine.spec.ts` checks it against the takes.
+
+| | Measured |
+| --- | --- |
+| Release (R4) | like the decay up to 80 (to −20 dB: 3.5 s at 40, 0.84 s at 60, 0.16 s at 80), faster above (16 ms at 100), instant from 110 |
+| LFO speed | 0.036 Hz at 0 (a cycle of ~28 s), 0.7 at 16, 1.3 at 32, 2.0 at 48, 2.7 at 64, 4.4 at 80, 8.4 at 96, 17.5 at 112, 39.7 at 127 |
+| LFO delay | waits, then fades in within 0.1–0.5 s: starts at 0.05 s (32), 0.35 s (64), 1.05 s (96), 1.75 s (112), 2.95 s (127) |
+| LFO waves | sine, triangle, saw up, saw down, square as named; S&H a new value each cycle, **S&H 8 eight values a cycle** |
+| PMD | **quadratic and deep**: the pitch swings ±0.4 semitones at 16, ±1.5 at 32, ±6 at 64, ±13.6 at 96, **±24 at 127** |
+| AMD | quadratic in dB: the level swings 1.9 dB at 16, 6.4 at 32, 24.7 at 64, 56 at 96 (127 below the takes' floor, ~98 by the same curve) |
+| Pitch EG level | 1 semitone a step (0x40 none, ±48) |
+| Pitch EG start | **each note starts at L1, not L4** as on the DX7: R1 never sounds from a key-down. The style editor's brass blip and the wheel's pitch accent set L4 and so never sounded; they now start at L1 and fall back at R2 |
+| Pitch EG rate | a fall of 12 semitones takes 0.8 s at 20, 0.19 s at 40, 26 ms at 60; instant from 80 |
+| Detune | 0.59 cents a step: −37.6 … +36.9 cents |
+| Keyboard level scaling | break point C3 (MIDI 60); linear 18 dB an octave at depth 127, exponential 9 dB × octaves² (9, 36, 81), both in proportion to the depth; up (+lin, +exp) the same, but never above full level |
+| Rate scaling | centred on C3: slower below, faster above; at 127 twice as fast an octave up (64: 1.38 ×) |
+
+With these, the engine has no estimates left: every table is a measurement (the lowest output and EG levels, 1–7,
+extend the measured slope).
 
 ## Loudness levelling (PLAN §8.4)
 

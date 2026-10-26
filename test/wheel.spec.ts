@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { centroid, flatness, slice } from '../src/engine/measure'
+import { centroid, envelope, flatness, pitch, rms, slice, toDb } from '../src/engine/measure'
 import { renderNote } from '../src/engine/render'
 import { ALGORITHMS } from '../src/params/algorithms'
 import { SHAPES } from '../src/style/choices'
 import type { Envelope } from '../src/style/shapes'
 import { voiceName, voiceProblems } from '../src/sysex/codec'
-import { angleOf, mixOf, NO_PINS, SECTOR, TONALITIES, type Pin, type Tonality, type WheelChoices } from '../src/wheel/choices'
+import { angleOf, mixOf, NO_PINS, REGISTERS, SECTOR, TONALITIES, type Pin, type Tonality, type WheelChoices } from '../src/wheel/choices'
 import { BRANCH_SHARE, generateWheel, wheelName } from '../src/wheel/generate'
 import { findLayout } from '../src/wheel/layout'
 import { ensureAudible, levelLoudness, loudness, SILENT_DB, TARGET_DB } from '../src/wheel/loudness'
@@ -214,12 +214,16 @@ describe('loudness and audibility', () => {
     }
   })
 
-  it('200 random pin sets: none silent, none more than 3 dB off the target', () => {
+  it('200 random pin sets and controls: none silent, none more than 3 dB off the target', () => {
     const r = rng(42)
     for (let i = 0; i < 200; i++) {
       const pins = Array.from({ length: r.int(1, 3) }, () => ({ angle: r.range(0, 360), radius: r.next(), weight: r.range(0.2, 1) }))
       const shape = r.chance(0.5) ? r.pick(ENVELOPES) : null
-      const g = generateWheel(choices(pins, shape), { seed: i, wild: r.next() })
+      const controls: Partial<WheelChoices> = {
+        length: r.range(-1, 1), brightness: r.range(-1, 1), treble: r.range(-1, 1), complexity: r.next(), motion: r.next(),
+        register: r.chance(0.5) ? r.pick(REGISTERS) : null, velocity: r.chance(0.5) ? r.next() : null, pitchAccent: r.chance(0.3),
+      }
+      const g = generateWheel({ ...choices(pins, shape), ...controls }, { seed: i, wild: r.next() })
       const label = JSON.stringify({ pins, shape, i })
       expect(voiceProblems(g.voice), label).toEqual([])
       expect(g.loudness, label).toBeGreaterThan(SILENT_DB)
@@ -244,5 +248,80 @@ describe('loudness and audibility', () => {
     for (const op of ALGORITHMS[v.common[0x10]].carriers) v.ops[op][0x12] = 0
     ensureAudible(v)
     expect(loudness(v)).toBeGreaterThan(SILENT_DB)
+  })
+})
+
+describe('the controls (measured with the probe engine)', () => {
+  const SR = 48000
+  const gen = (t: Tonality, c: Partial<WheelChoices> = {}, seed = 1) => generateWheel({ ...choices([pin(t)]), ...c }, { seed })
+  const play = (c: Partial<WheelChoices>, t: Tonality, o: { note?: number; velocity?: number; hold?: number } = {}) => ({
+    samples: renderNote(gen(t, c).voice, { note: o.note ?? 60, velocity: o.velocity ?? 100, holdSeconds: o.hold ?? 1, sampleRate: SR }), sampleRate: SR,
+  })
+  const bright = (c: Partial<WheelChoices>, t: Tonality, note = 60) => centroid(slice(play({ shape: 'gate', ...c }, t, { note }), 0.1, 0.5)) / (440 * 2 ** ((note - 69) / 12))
+  const db = (s: ReturnType<typeof play>, from: number, to: number) => toDb(rms(slice(s, from, to)))
+
+  it('brightness: mellow darker, bright brighter', () => {
+    for (const t of ['bell', 'brass', 'reed', 'organ'] as Tonality[]) {
+      expect(bright({ brightness: 1 }, t), t).toBeGreaterThan(bright({}, t) * 1.1)
+      expect(bright({ brightness: -1 }, t), t).toBeLessThan(bright({}, t))
+    }
+  })
+
+  it('length: a long struck note still sounds where a short one has died', () => {
+    const late = (length: number) => { const s = play({ length }, 'bell', { hold: 2 }); return db(s, 1.5, 1.8) - db(s, 0.05, 0.25) }
+    expect(late(1)).toBeGreaterThan(late(-1) + 10)
+  })
+
+  it('treble: brighter up the keyboard against the bass', () => {
+    const tilt = (treble: number) => bright({ treble }, 'brass', 84) / bright({ treble }, 'brass', 36)
+    expect(tilt(1)).toBeGreaterThan(tilt(-1) * 1.3)
+  })
+
+  it('complexity: pure is two operators, a quarter three; dense adds and deepens', () => {
+    const count = (complexity: number, t: Tonality) => gen(t, { complexity }).voice.ops.filter((o) => o[0x12] > 0).length
+    for (const t of TONALITIES) {
+      expect(count(0, t), t).toBeLessThanOrEqual(2)
+      expect(count(0.25, t), t).toBeLessThanOrEqual(3)
+      expect(count(1, t), t).toBeGreaterThanOrEqual(count(0.5, t))
+    }
+    expect(bright({ complexity: 1 }, 'warm')).toBeGreaterThan(bright({}, 'warm'))
+  })
+
+  it('motion: a held note keeps moving; a voice with vibrato keeps its LFO', () => {
+    const sway = (motion: number) => {
+      const env = [...envelope(slice(play({ motion }, 'brass', { hold: 2 }), 0.5, 2), 0.05)].map((x) => toDb(x))
+      return Math.max(...env) - Math.min(...env)
+    }
+    expect(sway(1)).toBeGreaterThan(sway(0) + 1)
+    const lfo = (motion: number) => [...gen('string', { motion }).voice.common.subarray(0x11, 0x15)]
+    expect(lfo(1)).toEqual(lfo(0))
+  })
+
+  it('register: an octave or two down or up; lead glides one note at a time', () => {
+    const f0 = (register: WheelChoices['register']) => pitch(slice(play({ register, shape: 'gate' }, 'warm'), 0.3, 0.6))
+    expect(f0('bass')).toBeCloseTo(f0('mid') / 2, 0)
+    expect(f0('sub')).toBeCloseTo(f0('mid') / 4, 0)
+    expect(f0('high')).toBeCloseTo(f0('mid') * 2, -1)
+    const lead = gen('brass', { register: 'lead' }).voice
+    expect(lead.common[0x0d]).toBe(2)
+    expect(lead.common[0x0e]).toBeGreaterThan(0)
+    expect(gen('brass', { register: 'lead', mode: 'poly' }).voice.common[0x0d]).toBe(0)
+  })
+
+  it('velocity: strong answers to the keys, none doesn’t', () => {
+    const range = (velocity: number) => db(play({ velocity, shape: 'gate' }, 'tine', { velocity: 120 }), 0.1, 0.4) - db(play({ velocity, shape: 'gate' }, 'tine', { velocity: 40 }), 0.1, 0.4)
+    expect(range(0)).toBeLessThan(1)
+    expect(range(1)).toBeGreaterThan(6)
+  })
+
+  it('pitch accent: each note falls into its pitch', () => {
+    const s = play({ pitchAccent: true, shape: 'gate' }, 'warm')
+    expect(pitch(slice(s, 0, 0.02))).toBeGreaterThan(pitch(slice(s, 0.3, 0.5)) * 1.02)
+  })
+
+  it('effects: the colour in slot 1, the space in slot 2, the tonality’s own when none is chosen', () => {
+    expect(gen('bell').voice.common[0x20]).toBe(7)
+    const v = gen('bell', { colour: 'chorus', space: 'echo' }).voice
+    expect([v.common[0x1d], v.common[0x20]]).toEqual([3, 6])
   })
 })

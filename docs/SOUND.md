@@ -202,3 +202,24 @@ divides by the carriers.
 On the DX (`tools/voiceProbe.ts tonalities mixes`, 2026-10-26, the loudest 20 ms): the 12 tonalities and 6 two-pin
 mixes from −28.8 to −32.0 dB, a spread of 3.2 dB (before: about 10 dB). With the wave-table feedback FM noise had
 stood out at −26.2 dB; with the feedback loop it is in line.
+
+## The controls (PLAN §8.4 step 4)
+
+`src/wheel/controls.ts`. Brightness, treble and length are the style editor's (measured above); complexity, motion,
+register and play are new for the reface. On the DX against the probe engine (`tools/voiceProbe.ts controls`,
+2026-10-26; brightness as the spectral centroid in harmonics, levelled voices):
+
+| Control | DX | Engine |
+| --- | --- | --- |
+| Brightness −1 / 0 / +1, brass | 1.4 / 4.2 / 15.5 | 1.3 / 4.1 / 13.2 |
+| Brightness −1 / 0 / +1, bell | 2.0 / 3.4 / 8.7 | 1.9 / 3.5 / 8.2 |
+| Treble −1, brass at C1 → C5 | 11.0 → 1.7 | 9.4 → 1.8 |
+| Treble +1, brass at C1 → C5 | 2.5 → 6.7 | 2.5 → 6.6 |
+| Length −1 / +1, bell 0.9 s in | −16.2 / −6.5 dB | −19.3 / −6.9 dB |
+| Complexity 0 / ½ / 1, Sine | 1.48 / 1.23 / 1.41 | 1.40 / 1.16 / 1.35 |
+| Motion 0 / 1, brass: how much a held note moves | 0.1 / 2.6 dB | 0.3 / 3.0 dB |
+| Velocity 0 / 1, e-piano: velocity 120 against 40 | 0 / 6.5 dB | 0 / 6.5 dB |
+
+Complexity moves Sine's brightness only a little (it has two light modulators to add or take away); pure is fewer
+operators, not always darker (the e-piano keeps its 1 : 1 body, brighter than body and tine together). The pitch
+accent and the register are checked in the engine only (pitch EG rates are still an estimate).

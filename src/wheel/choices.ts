@@ -1,5 +1,6 @@
 // The wheel (PLAN §8): twelve tonalities around a circle and the pins on it. Copied from the volca fm generator
 // (its choices.ts) with the same names, order and hues, so the two wheels look and read alike.
+import type { Colour, Mode, Space } from '../style/choices'
 import type { Envelope } from '../style/shapes'
 
 /** The twelve tonalities clockwise from the top of the wheel; neighbours sound close. */
@@ -46,13 +47,45 @@ export interface Pin {
   weight: number
 }
 
+/** Where on the keyboard a voice sits: an octave or two down or up; lead plays one note at a time, gliding. */
+export const REGISTERS = ['sub', 'bass', 'mid', 'lead', 'high'] as const
+export type Register = (typeof REGISTERS)[number]
+export const REGISTER_LABELS: Record<Register, string> = { sub: 'Sub', bass: 'Bass', mid: 'Mid', lead: 'Lead', high: 'High' }
+
+/** The pins and the controls next to the wheel (PLAN §8.3). Every control has a neutral value, so pins alone make a
+ *  voice in the tonality's own way. */
 export interface WheelChoices {
   pins: Pin[]
   /** null: the dominant tonality's own */
   shape: Envelope | null
+  /** −1 short … +1 long */
+  length: number
+  /** −1 mellow … +1 bright */
+  brightness: number
+  /** −1 tamer … +1 brighter up the keyboard */
+  treble: number
+  /** 0 pure (two operators) … 1 dense (all four, stacked deeper); ½ the tonalities' own */
+  complexity: number
+  /** 0 still … 1 alive */
+  motion: number
+  /** null: as the tonality plays it */
+  register: Register | null
+  /** 0 none … 1 strong: velocity on brightness and loudness; null: the voice's own */
+  velocity: number | null
+  /** a short pitch fall into each note */
+  pitchAccent: boolean
+  /** the DX's part mode; null: the voice's own (lead plays mono legato) */
+  mode: Mode | null
+  /** effect slot 1; null: clean */
+  colour: Colour | null
+  /** effect slot 2; null: the dominant tonality's own */
+  space: Space | null
 }
 
-export const NO_PINS: WheelChoices = { pins: [], shape: null }
+export const NO_PINS: WheelChoices = {
+  pins: [], shape: null, length: 0, brightness: 0, treble: 0, complexity: 0.5, motion: 0, register: null, velocity: null, pitchAccent: false,
+  mode: null, colour: null, space: null,
+}
 
 /** A tonality in the mix, after the pins are read. */
 export interface MixPart {

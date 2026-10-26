@@ -7,10 +7,12 @@
 import { ALGORITHMS, isCarrier } from '../params/algorithms'
 import { ratioOf } from '../params/display'
 import { setVoiceName, type Voice } from '../sysex/codec'
+import { MODE_BYTE } from '../style/choices'
 import { rng as makeRng, type Rng } from '../style/random'
 import { applyShape, applyTransients, type Envelope } from '../style/shapes'
 import { applyLength, rolesOf } from '../style/transforms'
 import { mixOf, TONALITIES, type MixPart, type Tonality, type WheelChoices } from './choices'
+import { applyBrightness, applyComplexity, applyEffects, applyMotion, applyPitchAccent, applyRegister, applyTreble, applyVelocity, TONALITY_SPACE } from './controls'
 import { applyLayout, byImportance, findLayout, type Layout, type Need } from './layout'
 import { ensureAudible, levelLoudness, rescue, SILENT_DB } from './loudness'
 import { applyOpSpec, buildSkeleton, fastOps, TONALITY_DEFS, type OpSpec } from './tonalities'
@@ -61,7 +63,8 @@ export function generateWheel(c: WheelChoices, { seed, wild = 0 }: WheelOptions)
   applyShape(v, shape, rng, spread)
   applyTransients(v, fastOps(skeleton))
   if (skeleton.pitchBlip && shape !== 'swell') applyPitchBlip(v, skeleton.pitchBlip)
-  applyLength(v, skeleton.length ?? 0)
+  // a chosen length takes the place of the tonality's own
+  applyLength(v, c.length || (skeleton.length ?? 0))
   applyIntensity(v, dominant.intensity)
 
   const roles: WheelVoice['roles'] = [{ tonality: dominant.tonality, as: 'skeleton' }]
@@ -82,6 +85,18 @@ export function generateWheel(c: WheelChoices, { seed, wild = 0 }: WheelOptions)
       roles.push({ tonality: part.tonality, as: 'transform' })
     }
   }
+  // the controls; complexity keeps each pin's most important pair
+  const owned = [...new Set(opTonality.filter((t): t is Tonality => t !== null))].map((t) => [0, 1, 2, 3].filter((op) => opTonality[op] === t))
+  applyBrightness(v, c.brightness)
+  applyComplexity(v, c.complexity, rng, owned)
+  applyMotion(v, c.motion, rng)
+  applyRegister(v, c.register, c.mode)
+  if (c.mode) v.common[0x0d] = MODE_BYTE[c.mode]
+  applyVelocity(v, c.velocity)
+  if (c.pitchAccent) applyPitchAccent(v)
+  applyTreble(v, c.treble)
+  applyEffects(v, c.colour, c.space ?? TONALITY_SPACE[dominant.tonality])
+
   // heard, and as loud as the others
   ensureAudible(v)
   let loudness = levelLoudness(v)

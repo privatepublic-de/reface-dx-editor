@@ -2,7 +2,7 @@
 // shaped waves (feedback), every tonality from one pin, and noise grafted at several levels. Each is played on the
 // DX and rendered by the engine and measured the same way: loudness, brightness (spectral centroid in harmonics of
 // the note), noisiness (flatness) and the envelope. Usage: npx vite-node tools/voiceProbe.ts [--engine] [group…]
-// Groups: shaped tonalities noise mixes. --engine renders only (no DX); --compare renders the voices the DX played (the
+// Groups: shaped tonalities noise noisegap controls mixes. --engine renders only (no DX); --compare renders the voices the DX played (the
 // .syx beside each take) against its logged measures, without the DX. Appends the DX's to local/takes/voices.jsonl.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { renderNote } from '../src/engine/render'
@@ -20,20 +20,20 @@ const groups = args.filter((a) => !a.startsWith('--'))
 
 const r1 = (x: number) => Math.round(x * 10) / 10
 const fmt = (m: ReturnType<typeof measure>) =>
-  `${r1(m.db).toString().padStart(6)} dB  peak ${r1(m.peakDb).toString().padStart(6)}  ${m.centroidH.toFixed(2).padStart(6)} H  flat ${m.flatness.toFixed(3)}  env ${m.env.map((e) => r1(e).toString().padStart(5)).join(' ')}`
+  `${r1(m.db).toString().padStart(6)} dB  peak ${r1(m.peakDb).toString().padStart(6)}  sway ${r1(m.sway).toString().padStart(4)}  ${m.centroidH.toFixed(2).padStart(6)} H  flat ${m.flatness.toFixed(3)}  env ${m.env.map((e) => r1(e).toString().padStart(5)).join(' ')}`
 
 const dx = engineOnly || compare ? null : await (await import('./dxTake')).openDx()
 // the engine at the DX's recording level: by the first take's loudness against its render
 let offset: number | null = null
 try {
   for (const p of probes(groups)) {
-    const e = measure(Float64Array.from(renderNote(p.voice, { note: p.note, holdSeconds: p.holdS, releaseSeconds: 0.3, sampleRate: RATE })), p.note)
+    const e = measure(Float64Array.from(renderNote(p.voice, { note: p.note, velocity: p.velocity ?? 100, holdSeconds: p.holdS, releaseSeconds: 0.3, sampleRate: RATE })), p.note)
     const file = `${DIR}/${p.label.replace(/[\s+]+/g, '-')}`
     if (compare) {
       const logged = existsSync(LOG) ? readFileSync(LOG, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).reverse().find((r) => r.label === p.label) : null
       if (!logged || !existsSync(`${file}.syx`)) continue
       const played = voicesFromBytes(readFileSync(`${file}.syx`)).voices[0]
-      const r = measure(Float64Array.from(renderNote(played, { note: p.note, holdSeconds: p.holdS, releaseSeconds: 0.3, sampleRate: RATE })), p.note)
+      const r = measure(Float64Array.from(renderNote(played, { note: p.note, velocity: p.velocity ?? 100, holdSeconds: p.holdS, releaseSeconds: 0.3, sampleRate: RATE })), p.note)
       offset ??= logged.dx.db - r.db
       r.db += offset
       r.peakDb += offset
@@ -44,7 +44,7 @@ try {
       console.log(`${p.label.padEnd(26)} engine ${fmt(e)}`)
       continue
     }
-    const x = await dx.take(`${file}.wav`, p.voice, p.note, p.holdS, { tailS: 0.3 })
+    const x = await dx.take(`${file}.wav`, p.voice, p.note, p.holdS, { tailS: 0.3, velocity: p.velocity })
     const m = measure(x, p.note)
     offset ??= m.db - e.db
     e.db += offset

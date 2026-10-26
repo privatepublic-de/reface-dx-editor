@@ -3,7 +3,7 @@
 import { fixedBytes } from '../src/params/display'
 import { initVoice } from '../src/params/init'
 import { cloneVoice, type Voice } from '../src/sysex/codec'
-import { angleOf, TONALITIES, type Tonality } from '../src/wheel/choices'
+import { angleOf, NO_PINS, TONALITIES, type Tonality, type WheelChoices } from '../src/wheel/choices'
 import { generateWheel } from '../src/wheel/generate'
 import { db, envelope, noteHz, RATE, rms, spectrum } from './dxAudio'
 
@@ -13,6 +13,7 @@ export interface Probe {
   voice: Voice
   note: number
   holdS: number
+  velocity?: number
 }
 
 /** OP2 → OP1 at 1 : 1 (algorithm 1, OP3/4 off), OP2 with a shaped wave. */
@@ -30,8 +31,8 @@ function shaped(level: number, square: boolean): Voice {
   return v
 }
 
-const wheel = (pins: [Tonality, number][], shape: 'gate' | null = null) =>
-  generateWheel({ pins: pins.map(([t, weight]) => ({ angle: angleOf(t), radius: 0.5, weight })), shape }, { seed: 1 })
+const wheel = (pins: [Tonality, number][], shape: 'gate' | null = null, controls: Partial<WheelChoices> = {}) =>
+  generateWheel({ ...NO_PINS, pins: pins.map(([t, weight]) => ({ angle: angleOf(t), radius: 0.5, weight })), shape, ...controls }, { seed: 1 })
 
 /** The probes of `groups` (all when empty): shaped, tonalities, noise. */
 export function probes(groups: readonly string[] = []): Probe[] {
@@ -70,6 +71,16 @@ export function probes(groups: readonly string[] = []): Probe[] {
       out.push({ group: 'noisegap', label: `c${carrierFb} m${modFb} ${fixed ? '3k' : '1to1'} ${level}`, voice: v, note: 48, holdS: 0.8 })
     }
   }
+  if (want('controls')) {
+    const c = (label: string, t: Tonality, controls: Partial<WheelChoices>, o: Partial<Probe> = {}) =>
+      out.push({ group: 'controls', label, voice: wheel([[t, 1]], null, controls).voice, note: 60, holdS: 1.2, ...o })
+    for (const b of [-1, 0, 1]) for (const t of ['brass', 'bell'] as Tonality[]) c(`${t} brightness ${b}`, t, { brightness: b, shape: 'gate' })
+    for (const l of [-1, 1]) c(`bell length ${l}`, 'bell', { length: l }, { holdS: 2 })
+    for (const tr of [-1, 1]) for (const note of [36, 84]) c(`brass treble ${tr} at ${note}`, 'brass', { treble: tr, shape: 'gate' }, { note })
+    for (const x of [0, 0.5, 1]) c(`warm complexity ${x}`, 'warm', { complexity: x, shape: 'gate' })
+    for (const m of [0, 1]) c(`brass motion ${m}`, 'brass', { motion: m }, { holdS: 2.5 })
+    for (const x of [0, 1]) for (const vel of [40, 120]) c(`tine velocity ${x} at ${vel}`, 'tine', { velocity: x, shape: 'gate' }, { velocity: vel })
+  }
   if (want('mixes')) for (const [a, b, w] of [['bell', 'warm', 0.5], ['tine', 'reed', 0.8], ['organ', 'breath', 0.5], ['metallic', 'noise', 0.4], ['string', 'glass', 0.4], ['wooden', 'bell', 0.4]] as [Tonality, Tonality, number][]) {
     out.push({ group: 'mixes', label: `${a} + ${b} ${w}`, voice: wheel([[a, 1], [b, w]]).voice, note: 60, holdS: 1.2 })
   }
@@ -100,6 +111,9 @@ export function measure(x: Float64Array, note: number) {
     n++
   })
   const at = (s: number) => db(rms(x, on + s * RATE, on + (s + 0.05) * RATE) / (top + 1e-12))
+  // how much a held note moves: the range of 50 ms blocks from 0.5 s to 0.2 s before the end of what's there
+  const held = envelope(x.subarray(on + 0.5 * RATE), 0.05).map((e) => db(e))
+  const steadyPart = held.slice(0, Math.max(1, held.length - 14))
   const blocks = envelope(x, 0.02)
   return {
     db: db(rms(w)),
@@ -107,6 +121,7 @@ export function measure(x: Float64Array, note: number) {
     centroidH: weighted / sum / noteHz(note),
     flatness: Math.exp(logSum / n) / (flatSum / n),
     env: [0.05, 0.3, 0.6, 0.9].map(at),
+    sway: Math.max(...steadyPart) - Math.min(...steadyPart),
   }
 }
 

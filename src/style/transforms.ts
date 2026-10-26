@@ -162,7 +162,7 @@ export function applyExpressive(v: Voice, r: Roles, x: number) {
 }
 
 /** Effect slot 1, the colour, and slot 2, the space: [type, param 1, param 2] (EFFECT_PARAM_LABELS). */
-const COLOUR_FX: Record<Colour, [number, number, number]> = {
+export const COLOUR_FX: Record<Colour, [number, number, number]> = {
   clean: [0, 64, 64],
   drive: [1, 90, 50],
   wah: [2, 75, 70],
@@ -170,7 +170,7 @@ const COLOUR_FX: Record<Colour, [number, number, number]> = {
   flanger: [4, 100, 35],
   phaser: [5, 110, 45],
 }
-const SPACE_FX: Record<Space, [number, number, number]> = {
+export const SPACE_FX: Record<Space, [number, number, number]> = {
   dry: [0, 64, 64],
   room: [7, 40, 40],
   hall: [7, 70, 100],

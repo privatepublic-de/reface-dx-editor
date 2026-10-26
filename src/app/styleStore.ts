@@ -19,15 +19,17 @@ export interface SheetPin extends Pin {
   id: number
 }
 export type SheetChoices = Omit<WheelChoices, 'pins'> & { pins: SheetPin[] }
+export type Section = 'playing' | 'more' | 'effects'
+const SECTIONS: readonly Section[] = ['playing', 'more', 'effects']
 
 interface Saved {
   choices: SheetChoices
   /** 0 the voice as it was … 1 the wheel's voice */
   mix: number
-  /** 0 typical … ½ anywhere in the tonalities … 1 mutated as well */
+  /** 0 typical … 1 anywhere in the tonalities' ranges */
   wild: number
-  /** the More section is open */
-  more: boolean
+  /** the folded sections that are open: playing, more, effects */
+  sections: Section[]
   /** the effects stay as your voice has them */
   keepFx: boolean
 }
@@ -45,7 +47,7 @@ export interface StyleState extends Saved {
   set(patch: Partial<Omit<WheelChoices, 'pins'>>): void
   setMix(mix: number): void
   setWild(wild: number): void
-  setMore(open: boolean): void
+  setSection(section: Section, open: boolean): void
   setKeepFx(keep: boolean): void
   /** a pin where the wheel was clicked; null when there are three already */
   addPin(angle: number, radius: number): number | null
@@ -69,7 +71,7 @@ let nextId = 1
 const withId = (p: Pin): SheetPin => ({ angle: p.angle, radius: p.radius, weight: p.weight, id: nextId++ })
 
 const NONE: SheetChoices = { ...NO_PINS, pins: [] }
-const DEFAULTS: Saved = { choices: NONE, mix: 1, wild: 0.1, more: false, keepFx: false }
+const DEFAULTS: Saved = { choices: NONE, mix: 1, wild: 0.1, sections: [], keepFx: false }
 
 const num = (x: unknown, lo: number, hi: number, fallback: number) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(lo, Math.min(hi, x)) : fallback)
 const oneOf = <T,>(x: unknown, all: readonly T[]): T | null => (all.includes(x as T) ? (x as T) : null)
@@ -105,7 +107,8 @@ function load(): Saved {
       choices: sanitize(s.choices ?? {}),
       mix: num(s.mix, 0, 1, DEFAULTS.mix),
       wild: num(s.wild, 0, 1, DEFAULTS.wild),
-      more: !!s.more,
+      // the style editor had one More section
+      sections: Array.isArray(s.sections) ? s.sections.filter((x): x is Section => SECTIONS.includes(x)) : (s as { more?: boolean }).more ? ['more'] : [],
       // the style editor kept it among the choices
       keepFx: !!(s.keepFx ?? (s.choices as { keepFx?: boolean } | undefined)?.keepFx),
     }
@@ -116,8 +119,8 @@ function load(): Saved {
 
 function save(s: Saved) {
   try {
-    const { choices, mix, wild, more, keepFx } = s
-    localStorage.setItem(STYLE_KEY, JSON.stringify({ choices: { ...choices, pins: choices.pins.map(({ angle, radius, weight }) => ({ angle, radius, weight })) }, mix, wild, more, keepFx }))
+    const { choices, mix, wild, sections, keepFx } = s
+    localStorage.setItem(STYLE_KEY, JSON.stringify({ choices: { ...choices, pins: choices.pins.map(({ angle, radius, weight }) => ({ angle, radius, weight })) }, mix, wild, sections, keepFx }))
   } catch {
     // private mode: the choices last for this visit
   }
@@ -156,8 +159,9 @@ export const useStyle = create<StyleState>((set, get) => {
     set: (patch) => update({ choices: { ...get().choices, ...patch } }),
     setMix: (mix) => update({ mix }),
     setWild: (wild) => update({ wild }),
-    setMore: (more) => {
-      set({ more })
+    setSection: (section, open) => {
+      const rest = get().sections.filter((x) => x !== section)
+      set({ sections: open ? [...rest, section] : rest })
       save(get())
     },
     setKeepFx: (keepFx) => update({ keepFx }),

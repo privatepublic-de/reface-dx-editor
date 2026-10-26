@@ -1,18 +1,11 @@
-// What the Style sheet's Mix and Wild do to a voice (PLAN §8.4): blend towards the new voice, mutate on top. Left from
-// the family/character style editor (PLAN §7.2), which is gone. All pure: (voice, …, seed) → voice.
+// What the Style sheet's Mix does to a voice (PLAN §8.4): your voice blended towards the wheel's. Left from the
+// family/character style editor (PLAN §7.2), which is gone. Pure: (voice, target, amount, rng) → voice.
 import { COMMON_PARAMS } from '../params/common'
 import { OPERATOR_PARAMS } from '../params/operator'
 import { cloneVoice, type Voice } from '../sysex/codec'
-import { rng as makeRng, type Rng } from './random'
-import { ensureAudible, rolesOf } from './transforms'
+import type { Rng } from './random'
 
-/** How far Wild mutates at the top: half of everything is already chaos. */
-const WILD_MUTATE = 50
-
-/** Wild as the variation within the style and the mutation on top. */
-export const wildParts = (wild: number) => ({ variation: Math.min(1, wild * 2), mutate: Math.round(Math.max(0, wild * 2 - 1) * WILD_MUTATE) })
-
-/** The bytes blend and mutate never move by halves: a halfway value is another sound. Coarse and fine go together. */
+/** The bytes blend never moves by halves: a halfway value is another sound. Coarse and fine go together. */
 const COMMON_DISCRETE = new Set([0x0d, 0x10, 0x11, 0x1d, 0x20])
 const OP_DISCRETE = new Set([0x00, 0x0c, 0x0d, 0x0f, 0x10, 0x14, 0x15])
 const FREQ = [0x16, 0x17]
@@ -39,37 +32,5 @@ export function blend(v: Voice, target: Voice, amount: number, rng: Rng): Voice 
     }
     if ((op[0x16] !== t[0x16] || op[0x17] !== t[0x17]) && (op[0x15] === t[0x15]) && rng.chance(amount)) op.set(t.subarray(0x16, 0x18), 0x16)
   })
-  return out
-}
-
-/** Small random changes by `percent` (0–100): continuous values jitter by up to that share of their range; switches
- *  and ratios change rarely; the algorithm only from 50 %. The name, and with keepFx the effects, stay. */
-export function mutate(v: Voice, percent: number, seed: number, keepFx = false): Voice {
-  const out = cloneVoice(v)
-  const p = Math.max(0, Math.min(100, percent)) / 100
-  if (!p) return out
-  const rng = makeRng(seed)
-  const jitter = (cur: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(cur + (rng.next() * 2 - 1) * p * (hi - lo))))
-  for (const q of COMMON_PARAMS) {
-    if (keepFx && q.offset >= 0x1d && q.offset <= 0x22) continue
-    const cur = out.common[q.offset]
-    if (q.offset === 0x10) {
-      if (p >= 0.5 && rng.chance(p - 0.4)) out.common[q.offset] = rng.int(q.min, q.max)
-    } else if (COMMON_DISCRETE.has(q.offset)) {
-      if (rng.chance(p / 2)) out.common[q.offset] = rng.int(q.min, q.max)
-    } else if (rng.chance(Math.min(1, p * 1.5))) out.common[q.offset] = jitter(cur, q.min, q.max)
-  }
-  out.ops.forEach((op) => {
-    for (const q of OPERATOR_PARAMS) {
-      if (q.offset === 0x16) {
-        if (rng.chance(p / 3)) op[q.offset] = Math.max(q.min, Math.min(q.max, op[q.offset] + rng.pick([-1, 1])))
-      } else if (q.offset === 0x00) {
-        continue // operators are never switched off by chance
-      } else if (OP_DISCRETE.has(q.offset)) {
-        if (rng.chance(p / 4)) op[q.offset] = rng.int(q.min, q.max)
-      } else if (rng.chance(Math.min(1, p * 1.5))) op[q.offset] = jitter(op[q.offset], q.min, q.max)
-    }
-  })
-  ensureAudible(out, rolesOf(out))
   return out
 }

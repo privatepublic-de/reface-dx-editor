@@ -379,8 +379,6 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .link-toggle.on { color: var(--ink); }
 
 /* ---- the style editor ---- */
-.style-sheet h4 { margin: 0 0 6px; font: 600 12px var(--font-narrow); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-dim); }
-.style-sheet h4 .dim { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .hidden { visibility: hidden; }
 /* the style editor: a raised plate of lighter metal, edged in bronze, hanging from the Style tab between the bar and
    the pinned keyboard; everything behind it under a dark veil (the voice name stays lit: it shows what you hear) */
@@ -405,8 +403,6 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
   background: #4a372b; border: 2px solid var(--dx-signature); border-top: 0; border-bottom: 0; }
 .style-sheet__body { flex: 1; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 14px 16px; }
 .style-sheet__foot { display: grid; gap: 8px; padding: 10px 16px 12px; border-top: 1px solid #6b5444; background: #2b2019; }
-.style-sheet__wild { display: flex; align-items: center; gap: 8px; }
-.style-sheet__wild .slider { flex: 1; }
 .style-sheet__actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .style-sheet__actions > span { flex: 1; }
 .slider:has(.slider__value) { grid-template-columns: 6.5em 4.5em 1fr 4.5em 3em; }
@@ -419,12 +415,6 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .chip { position: relative; padding: 4px 2px; border-radius: 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip.on { background: var(--screen-ink); border-color: var(--screen-ink); color: #111; }
 .chip.implied { border-color: var(--screen-ink); border-style: dashed; }
-.style-panel__more summary { cursor: pointer; font-size: 13px; color: var(--ink-dim); }
-.style-panel__more[open] { display: grid; gap: 12px; }
-.style-panel__more .style-panel__group { margin-top: 4px; }
-.style-panel__more[open] summary { margin-bottom: 2px; }
-.style-panel__keep { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-dim); }
-.style-panel__sliders { display: grid; gap: 4px; }
 .slider { display: grid; grid-template-columns: 6.5em 4.5em 1fr 4.5em; align-items: center; gap: 8px; font-size: 13px; }
 .slider__label { color: var(--ink-dim); }
 .slider__end { font-size: 12px; white-space: nowrap; }
@@ -432,16 +422,40 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .slider__value { font-variant-numeric: tabular-nums; min-width: 3em; text-align: right; }
 .slider input { width: 100%; min-width: 0; accent-color: var(--screen-ink); }
 /* ---------- the wheel (after the volca fm generator's), in the sheet ---------- */
-.chips--7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .style-wheel { display: grid; justify-items: center; gap: 2px; }
 .style-wheel .wheel { width: min(330px, 100%); }
-.style-wheel__pins { margin: 0; min-height: 1.4em; font-size: 13px; text-align: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; }
-.style-voice { display: flex; align-items: center; gap: 14px; font-size: 13px; padding: 6px 12px; border-radius: 8px; background: var(--screen-lit); }
-.style-voice .algo { width: 104px; height: auto; flex: none; }
-.style-voice .algo__line { stroke-width: 2.5; }
-.style-panel__play { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
-.style-panel__play .slider { flex: 1; }
 .slider--dimmed input { opacity: .45; }
+.chips--8 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* under the wheel (or beside it): the controls, one column */
+.style-controls { display: grid; gap: 14px; align-content: start; }
+/* the wheel, what it made in one sentence, and the three ways on beside it */
+.style-wheel__said { margin: 0; min-height: 2.9em; max-width: 34em; font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; color: var(--ink-dim); }
+.style-wheel__said b { font-weight: 600; }
+.style-wheel__actions { display: flex; justify-content: center; gap: 8px; }
+.style-wheel__actions button { display: inline-flex; align-items: center; gap: 6px; }
+.style-wheel__actions .icon__svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.3; }
+/* a label and its control in two columns: sliders and chip rows line up */
+.style-rows { display: grid; gap: 6px; }
+.style-row { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; }
+.style-row__label { color: var(--ink-dim); }
+/* the folded sections: a title, and while closed what's set in them */
+.style-fold { border-top: 1px solid #6b544480; padding-top: 10px; }
+.style-fold summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; font-size: 13px; list-style: none; }
+.style-fold summary::-webkit-details-marker { display: none; }
+.style-fold summary::before { content: ''; flex: none; width: 0; height: 0; border: 4.5px solid transparent; border-left: 6px solid var(--ink-dim);
+  border-right: 0; transform: translateY(-1px); transition: transform .15s; }
+.style-fold[open] summary::before { transform: translateY(1px) rotate(90deg); }
+.style-fold__title { font-weight: 600; color: var(--ink); }
+.style-fold__said { color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.style-fold[open] summary { margin-bottom: 8px; }
+.style-check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-dim); margin-left: calc(6.5em + 8px); }
+/* wide windows: the wheel on the left, the controls beside it, so everything fits without scrolling */
+@media (min-width: 1000px) {
+  .style-sheet { width: min(920px, calc(100vw - 24px)); }
+  .style-sheet__body { grid-template-columns: minmax(300px, 370px) minmax(0, 1fr); column-gap: 26px; }
+  .style-wheel { align-self: start; }
+  .style-wheel .wheel { width: min(370px, 100%); }
+}
 .wheel { position: relative; width: 100%; aspect-ratio: 1; touch-action: none; user-select: none; }
 .wheel-field { position: absolute; inset: 11.54%; /* the rim is 1 in a view 2.6 wide */ border-radius: 50%;
   box-shadow: 0 0 80px -18px var(--glow), 0 0 0 1px #ffffff10; transition: box-shadow .6s; overflow: hidden; }
@@ -480,7 +494,8 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 button.link { background: none; border: none; padding: 0 4px; color: var(--ink-dim); text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 760px) {
   .chips--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .chips--7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .style-row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .style-check { margin-left: 0; }
   .chips--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .slider { grid-template-columns: 5.5em 1fr; }
   .slider__end { display: none; }

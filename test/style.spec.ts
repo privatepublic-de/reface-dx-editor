@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEMO_VOICES } from '../src/demo/demoVoices'
 import { fixedBytes, fixedHzOf, ratioBytes, ratioOf } from '../src/params/display'
 import { rng } from '../src/style/random'
-import { blend, mutate, wildParts } from '../src/style/style'
+import { blend } from '../src/style/style'
 import { rolesOf } from '../src/style/transforms'
 import { diffVoices, voiceName, voiceProblems, type Voice } from '../src/sysex/codec'
 
@@ -38,27 +38,5 @@ describe('Mix and Wild', () => {
     }
     for (let i = 1; i < distances.length; i++) expect(distances[i]).toBeLessThan(distances[i - 1])
     expect(distances.at(-1)!).toBeLessThan(distances[0] / 10)
-  })
-
-  it('wild: the first half widens the variation, the second half mutates on top', () => {
-    expect(wildParts(0)).toEqual({ variation: 0, mutate: 0 })
-    expect(wildParts(0.5)).toEqual({ variation: 1, mutate: 0 })
-    expect(wildParts(1)).toEqual({ variation: 1, mutate: 50 })
-  })
-
-  it('mutate: 0 % changes nothing; more changes more; the name stays; the algorithm only from 50 %', () => {
-    const v = DEMO_VOICES[3]
-    expect(mutate(v, 0, 1)).toEqual(v)
-    const small = diffVoices(v, mutate(v, 5, 1)).length
-    const big = diffVoices(v, mutate(v, 60, 1)).length
-    expect(small).toBeLessThan(big)
-    for (let seed = 1; seed < 20; seed++) {
-      const m = mutate(v, 40, seed)
-      expect(m.common[0x10]).toBe(v.common[0x10])
-      expect(voiceName(m)).toBe(voiceName(v))
-      guard(m)
-    }
-    const kept = mutate(v, 100, 5, true)
-    expect(Array.from(kept.common.subarray(0x1d, 0x23))).toEqual(Array.from(v.common.subarray(0x1d, 0x23)))
   })
 })

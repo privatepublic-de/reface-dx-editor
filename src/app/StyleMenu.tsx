@@ -1,21 +1,21 @@
 // Init and the Style sheet (PLAN §8). Init is the plain VOICE INIT in one click. The Style tab opens a panel joined to
-// it, docked on the left: the tonality wheel (wheel/, after the volca fm generator) and the controls next to it. It
-// caches the voice, and every change plays on the DX at once (paced Parameter Changes, sounding notes keep sounding).
-// Mix goes from the voice as it was to the wheel's voice; Wild from typical to anywhere in the tonalities' ranges and
-// then mutated; the dice tries another variation, Mutate moves the pins, the wheel's centre rolls a new voice. Apply
-// keeps what you hear as one undo step, Cancel (or Escape) goes back. Every chip keeps its size, so nothing moves.
-import { useEffect, useRef } from 'react'
-import { ALGORITHMS } from '../params/algorithms'
-import { COLOUR_LABELS, COLOURS, MODE_BYTE, MODE_HINTS, MODE_LABELS, MODES, SHAPE_HINTS, SHAPE_LABELS, SHAPES, SPACE_LABELS, SPACES } from '../style/choices'
+// it, docked on the left. The wheel is the instrument (wheel/, after the volca fm generator): a sentence under it says
+// what the pins made, three buttons beside it go on by size (Variation, Mutate, New voice). Below, the three things
+// changed most (brightness, complexity, motion) and the envelope; how it plays, the rest of the sound and the effects
+// fold away, each saying what's set while closed. Every change plays on the DX at once (paced Parameter Changes,
+// sounding notes keep sounding). Mix goes from the voice as it was to the wheel's; Apply keeps what you hear as one
+// undo step, Cancel (or Escape) goes back. Every chip keeps its size, so nothing moves while you choose.
+import { useEffect, useRef, type ReactNode } from 'react'
+import { COLOUR_LABELS, COLOURS, MODE_BYTE, MODE_HINTS, MODES, SHAPE_HINTS, SPACE_LABELS, SPACES, type Mode } from '../style/choices'
 import type { Envelope } from '../style/shapes'
-import { REGISTER_LABELS, REGISTERS, TONALITY_HUES, TONALITY_LABELS } from '../wheel/choices'
+import { TONALITY_HUES, TONALITY_LABELS, type Tonality } from '../wheel/choices'
 import { TONALITY_SPACE } from '../wheel/controls'
+import type { WheelVoice } from '../wheel/generate'
 import { TONALITY_DEFS } from '../wheel/tonalities'
-import { AlgorithmView } from './AlgorithmView'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
-import { useStyle } from './styleStore'
-import { pinLabel, Wheel } from './Wheel'
+import { useStyle, type Section, type SheetChoices } from './styleStore'
+import { Wheel } from './Wheel'
 
 /** Both hooks every render (an `a || b` of hooks skips the second while reading, and React fails). */
 function useBusy() {
@@ -47,22 +47,58 @@ export function StyleMenu() {
 }
 
 /** The envelopes offered: the style editor's six and the swell (brightness rising into the note). */
-const ENVELOPES: Envelope[] = [...SHAPES, 'swell']
-const ENVELOPE_LABELS: Record<Envelope, string> = { ...SHAPE_LABELS, swell: 'Swell' }
-const ENVELOPE_HINTS: Record<Envelope, string> = { ...SHAPE_HINTS, swell: 'The brightness rises into the note' }
-const ROLE_WORDS = { skeleton: 'the base', branch: 'a voice of its own', solo: 'one operator alone', graft: 'in the base’s tone', transform: 'colouring the base' }
+const ENVELOPES: Envelope[] = ['pluck', 'struck', 'bowed', 'pad', 'swell', 'gate', 'reverse']
+const ENVELOPE_LABELS: Record<Envelope, string> = { pluck: 'Pluck', struck: 'Struck', bowed: 'Bowed', pad: 'Pad', swell: 'Swell', gate: 'Gate', reverse: 'Reverse' }
+const ENVELOPE_HINTS: Record<Envelope, string> = { ...SHAPE_HINTS, struck: 'A quick drop, then a long fade', swell: 'The brightness rises into the note' }
+const REGISTERS = [['sub', 'Sub', 'Two octaves down'], ['bass', 'Bass', 'An octave down'], ['mid', 'Mid', 'Where the tonality plays'], ['high', 'High', 'An octave up']] as const
+const PLAYS = [...MODES.map((m) => [m, { poly: 'Poly', mono: 'Mono', legato: 'Legato' }[m], MODE_HINTS[m]] as const), ['lead', 'Lead', 'One note at a time, gliding, with vibrato']] as const
+const TOUCH = [[0, 'None', 'Every note alike'], [0.5, 'Some', 'A little louder and brighter when you play harder'], [1, 'Strong', 'Much louder and brighter when you play harder']] as const
+
+/** What the pins made, in one sentence: the heaviest, then the others by how they came in. */
+function sentence(g: WheelVoice | null): ReactNode {
+  if (!g || g.mix.length < 1) return null
+  const name = (t: Tonality) => <b key={t} style={{ color: `hsl(${TONALITY_HUES[t]} 72% 72%)` }}>{TONALITY_LABELS[t]}</b>
+  const list = (ts: Tonality[]) => ts.flatMap((t, i) => [i ? (i === ts.length - 1 ? ' and ' : ', ') : '', name(t)])
+  const by = (...as: string[]) => g.roles.slice(1).filter((r) => as.includes(r.as)).map((r) => r.tonality)
+  const parts: ReactNode[] = []
+  if (by('branch', 'solo').length) parts.push(<>with {list(by('branch', 'solo'))} as a second part</>)
+  if (by('graft').length) parts.push(<>{list(by('graft'))} in its tone</>)
+  if (by('transform').length) parts.push(<>tinted by {list(by('transform'))}</>)
+  return <>{name(g.roles[0].tonality)}{parts.map((p, i) => <span key={i}>, {p}</span>)}</>
+}
+
+/** A folded section's line while closed: what's set in it, or what it does when nothing is. */
+function summaries(c: SheetChoices, own: { shapeName: string; spaceName: string }, keepFx: boolean, wild: number): Record<Section, string> {
+  const playing = [
+    c.register === 'lead' ? 'lead' : c.register && c.register !== 'mid' ? REGISTERS.find(([r]) => r === c.register)![1].toLowerCase() : '',
+    c.mode ?? '',
+    c.velocity === null ? '' : `${TOUCH.reduce((a, t) => (Math.abs(t[0] - c.velocity!) < Math.abs(a[0] - c.velocity!) ? t : a))[1].toLowerCase()} touch`,
+    c.pitchAccent ? 'accent' : '',
+  ].filter(Boolean)
+  const more = [
+    c.length ? (c.length > 0 ? 'longer' : 'shorter') : '',
+    c.treble ? (c.treble > 0 ? 'brighter up the keys' : 'tamer up the keys') : '',
+    wild > 0.5 ? 'wild' : '',
+  ].filter(Boolean)
+  const effects = keepFx ? ['yours'] : [c.colour && c.colour !== 'clean' ? COLOUR_LABELS[c.colour].toLowerCase() : '', c.space ? SPACE_LABELS[c.space].toLowerCase() : ''].filter(Boolean)
+  return {
+    playing: playing.join(', ') || 'register, mode, touch, accent',
+    more: more.join(', ') || 'length, treble, wildness',
+    effects: effects.join(', ') || own.spaceName,
+  }
+}
 
 export function StyleSheet() {
-  const { choices: c, mix, wild, more, keepFx, dirty, original, generated, set, setMix, setWild, setMore, setKeepFx, another, mutate, reset, apply, cancel } = useStyle()
-  const voice = useEditor((s) => s.voice)
+  const { choices: c, mix, wild, sections, keepFx, dirty, original, generated, set, setMix, setWild, setSection, setKeepFx, another, mutate, newVoice, reset, apply, cancel } = useStyle()
   const first = useRef<HTMLDivElement>(null)
   // what the heaviest tonality brings when nothing is chosen: shown outlined, not as a choice
   const dominant = generated?.roles[0].tonality ?? null
   const ownShape = dominant ? TONALITY_DEFS[dominant].skeleton.shape : null
   const ownSpace = dominant ? TONALITY_SPACE[dominant] : null
-  const ownMode = mix >= 1 ? (c.register === 'lead' ? MODE_BYTE.legato : MODE_BYTE.poly) : original?.common[0x0d]
-  const dominantName = dominant ? TONALITY_LABELS[dominant].toLowerCase() : ''
+  const ownMode = mix >= 1 ? MODE_BYTE.poly : original?.common[0x0d]
+  const dominantName = dominant ? TONALITY_LABELS[dominant].toLowerCase() : 'tonality'
   const neutral = !c.pins.length && !c.shape && !c.length && !c.brightness && !c.treble && c.complexity === 0.5 && !c.motion && !c.register && c.velocity === null && !c.pitchAccent && !c.mode && !c.colour && !c.space
+  const said = summaries(c, { shapeName: ownShape ?? '', spaceName: ownSpace ? `the ${dominantName}’s own ${SPACE_LABELS[ownSpace].toLowerCase()}` : 'colour and space' }, keepFx, wild)
   useEffect(() => first.current?.querySelector<HTMLElement>('.wheel-centre')?.focus(), [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,115 +109,111 @@ export function StyleSheet() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  const shown = voice ?? original
+  const isMode = (m: Mode | 'lead') => (m === 'lead' ? c.register === 'lead' : c.mode === m && c.register !== 'lead')
+  const setPlay = (m: Mode | 'lead') => {
+    if (m === 'lead') set(c.register === 'lead' ? { register: null } : { register: 'lead', mode: null })
+    else set({ mode: c.mode === m ? null : m, register: c.register === 'lead' ? null : c.register })
+  }
   return (
     <aside className="style-sheet" id="style-panel" role="dialog" aria-label="Style">
       <div className="style-sheet__body">
         <div className="style-wheel" ref={first}>
           <Wheel />
-          <p className="style-wheel__pins dim">
-            {c.pins.length
-              ? generated?.roles.map((r, i) => (
-                <span key={i} style={{ color: `hsl(${TONALITY_HUES[r.tonality]} 70% 70%)` }}>{TONALITY_LABELS[r.tonality]}<span className="dim"> {ROLE_WORDS[r.as]}</span></span>
-              ))
-              : 'Click the wheel to pin a tonality, up to three. The centre rolls new pins.'}
+          <p className="style-wheel__said" aria-live="polite">
+            {c.pins.length ? sentence(generated) : 'Click the wheel to pin a tonality, up to three.'}
           </p>
+          <div className="style-wheel__actions">
+            <button onClick={another} title="The same pins, the details moved">
+              <svg viewBox="0 0 16 16" className="icon__svg" aria-hidden="true">
+                <rect x="2" y="2" width="12" height="12" rx="2.5" />
+                <circle cx="5.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="10.5" cy="10.5" r=".9" fill="currentColor" />
+                <circle cx="10.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="5.5" cy="10.5" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" />
+              </svg>
+              Variation
+            </button>
+            <button onClick={mutate} title="The pins and the controls moved a little: somewhere else on the wheel">Mutate</button>
+            <button onClick={newVoice} title="New pins anywhere on the wheel (or click its centre)">New voice</button>
+          </div>
         </div>
 
-        {shown && generated && (
-          <div className="style-voice" aria-label="The voice the wheel made">
-            <AlgorithmView algorithm={shown.common[0x10]} voice={shown} small
-              colours={mix >= 1 ? generated.opTonality.map((t) => (t ? `hsl(${TONALITY_HUES[t]} 75% 62%)` : null)) : undefined} />
-            <span className="dim">{c.pins.map(pinLabel).join(' · ') || 'a tonality picked by the dice'}</span>
-          </div>
-        )}
-
-        <div className="style-panel__sliders">
+        <div className="style-controls">
+        <div className="style-rows">
           <Slider label="Brightness" left="mellow" right="bright" value={c.brightness} min={-1} onChange={(v) => set({ brightness: v })} />
-          <Slider label="Complexity" left="pure" right="dense" value={c.complexity} min={0} neutral={0.5} onChange={(v) => set({ complexity: v })}
-            title="Pure: two operators. Dense: all four, stacked deeper. Middle: the tonalities’ own." />
+          <Slider label="Complexity" left="pure" right="dense" value={c.complexity} min={0} neutral={0.5} ticks={[0.5]} onChange={(v) => set({ complexity: v })}
+            title="Pure: two operators. Dense: all four, stacked deeper. The middle mark: the tonalities’ own." />
           <Slider label="Motion" left="still" right="alive" value={c.motion} min={0} onChange={(v) => set({ motion: v })} />
-        </div>
-
-        <Group title="Envelope" note={!c.shape && dominant ? `outlined: the ${dominantName}’s own` : undefined}>
-          <div className="chips chips--7">
-            {ENVELOPES.map((s) => (
-              <Chip key={s} on={c.shape === s} implied={!c.shape && ownShape === s} onClick={() => set({ shape: c.shape === s ? null : s })} title={ENVELOPE_HINTS[s]}>
-                {ENVELOPE_LABELS[s]}
-              </Chip>
-            ))}
-          </div>
-        </Group>
-
-        <Group title="Register">
-          <div className="chips chips--5">
-            {REGISTERS.map((r) => (
-              <Chip key={r} on={c.register === r} onClick={() => set({ register: c.register === r ? null : r })}
-                title={r === 'lead' ? 'One note at a time, gliding, with vibrato' : r === 'mid' ? 'As the tonality plays it' : undefined}>{REGISTER_LABELS[r]}</Chip>
-            ))}
-          </div>
-        </Group>
-
-        <Group title="Play" note={!c.mode ? `outlined: ${mix >= 1 ? 'the wheel’s' : 'as your voice has it'}` : undefined}>
-          <div className="chips chips--3">
-            {MODES.map((m) => (
-              <Chip key={m} on={c.mode === m} implied={!c.mode && ownMode === MODE_BYTE[m]} onClick={() => set({ mode: c.mode === m ? null : m })} title={MODE_HINTS[m]}>
-                {MODE_LABELS[m]}
-              </Chip>
-            ))}
-          </div>
-          <div className="style-panel__play">
-            <Slider label="Velocity" left="none" right="strong" value={c.velocity ?? 0} min={0} onChange={(v) => set({ velocity: v })}
-              title={c.velocity === null ? 'As the tonality plays it (double-click: back to that)' : 'Double-click: back to the tonality’s own'} onReset={() => set({ velocity: null })} dimmed={c.velocity === null} />
-            <label className="style-panel__keep">
-              <input type="checkbox" checked={c.pitchAccent} onChange={(e) => set({ pitchAccent: e.target.checked })} />
-              Pitch accent
-            </label>
-          </div>
-        </Group>
-
-        <details className="style-panel__more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
-          <summary>More: length, treble, effects</summary>
-          <div className="style-panel__sliders">
-            <Slider label="Length" left="short" right="long" value={c.length} min={-1} onChange={(v) => set({ length: v })} />
-            <Slider label="Treble" left="tamer" right="brighter" value={c.treble} min={-1} onChange={(v) => set({ treble: v })} title="How the brightness changes up the keyboard" />
-          </div>
-          <Group title="Colour">
-            <div className="chips chips--6">
-              {COLOURS.map((k) => (
-                <Chip key={k} on={c.colour === k} implied={!c.colour && k === 'clean'} onClick={() => set({ colour: c.colour === k ? null : k })}>{COLOUR_LABELS[k]}</Chip>
+          <Row label="Envelope">
+            <div className="chips chips--8">
+              <Chip on={!c.shape} onClick={() => set({ shape: null })} title={ownShape ? `The ${dominantName}’s own: ${ENVELOPE_LABELS[ownShape].toLowerCase()}` : 'The tonality’s own'}>Own</Chip>
+              {ENVELOPES.map((s) => (
+                <Chip key={s} on={c.shape === s} implied={!c.shape && ownShape === s} onClick={() => set({ shape: c.shape === s ? null : s })} title={ENVELOPE_HINTS[s]}>
+                  {ENVELOPE_LABELS[s]}
+                </Chip>
               ))}
             </div>
-          </Group>
-          <Group title="Space" note={!c.space && dominant ? `outlined: the ${dominantName}’s own` : undefined}>
+          </Row>
+        </div>
+
+        <Fold section="playing" title="Playing" summary={said.playing} open={sections.includes('playing')} onToggle={setSection}>
+          <Row label="Register">
             <div className="chips chips--4">
+              {REGISTERS.map(([r, label, hint]) => (
+                <Chip key={r} on={r === 'mid' ? !c.register || c.register === 'mid' || c.register === 'lead' : c.register === r} title={hint}
+                  onClick={() => set({ register: r === 'mid' ? null : c.register === r ? null : r })}>{label}</Chip>
+              ))}
+            </div>
+          </Row>
+          <Row label="Mode">
+            <div className="chips chips--4">
+              {PLAYS.map(([m, label, hint]) => (
+                <Chip key={m} on={isMode(m)} implied={m !== 'lead' && !c.mode && c.register !== 'lead' && ownMode === MODE_BYTE[m]} onClick={() => setPlay(m)} title={hint}>{label}</Chip>
+              ))}
+            </div>
+          </Row>
+          <Row label="Touch">
+            <div className="chips chips--5">
+              <Chip on={c.velocity === null} onClick={() => set({ velocity: null })} title="As the tonality answers to velocity">Own</Chip>
+              {TOUCH.map(([x, label, hint]) => (
+                <Chip key={label} on={c.velocity !== null && Math.abs(c.velocity - x) < 0.2} onClick={() => set({ velocity: x })} title={hint}>{label}</Chip>
+              ))}
+              <Chip on={c.pitchAccent} onClick={() => set({ pitchAccent: !c.pitchAccent })} title="A short pitch fall into each note">Accent</Chip>
+            </div>
+          </Row>
+        </Fold>
+
+        <Fold section="more" title="More" summary={said.more} open={sections.includes('more')} onToggle={setSection}>
+          <Slider label="Length" left="short" right="long" value={c.length} min={-1} onChange={(v) => set({ length: v })} />
+          <Slider label="Treble" left="tamer" right="brighter" value={c.treble} min={-1} onChange={(v) => set({ treble: v })} title="How the brightness changes up the keyboard" />
+          <Slider label="Wildness" left="typical" right="wild" value={wild} min={0} onChange={setWild} title="How far into the tonalities’ ranges a voice may go" />
+        </Fold>
+
+        <Fold section="effects" title="Effects" summary={said.effects} open={sections.includes('effects')} onToggle={setSection}>
+          <Row label="Colour">
+            <div className="chips chips--6">
+              {COLOURS.map((k) => (
+                <Chip key={k} on={c.colour === k || (k === 'clean' && !c.colour)} onClick={() => set({ colour: k === 'clean' ? null : c.colour === k ? null : k })}>{COLOUR_LABELS[k]}</Chip>
+              ))}
+            </div>
+          </Row>
+          <Row label="Space">
+            <div className="chips chips--5">
+              <Chip on={!c.space} onClick={() => set({ space: null })} title={ownSpace ? `The ${dominantName}’s own: ${SPACE_LABELS[ownSpace].toLowerCase()}` : 'The tonality’s own'}>Own</Chip>
               {SPACES.map((s) => (
                 <Chip key={s} on={c.space === s} implied={!c.space && ownSpace === s} onClick={() => set({ space: c.space === s ? null : s })}>{SPACE_LABELS[s]}</Chip>
               ))}
             </div>
-          </Group>
-          <label className="style-panel__keep">
+          </Row>
+          <label className="style-check">
             <input type="checkbox" checked={keepFx} onChange={(e) => setKeepFx(e.target.checked)} />
             Keep my effects
           </label>
-        </details>
+        </Fold>
+        </div>
       </div>
 
       <div className="style-sheet__foot">
         <Slider label="Mix" left="my voice" right="wheel" value={mix} min={0} onChange={setMix} percent
           title="All the way: the wheel’s voice. Less: your voice moved that far towards it." />
-        <div className="style-sheet__wild">
-          <Slider label="Wild" left="typical" right="mutated" value={wild} min={0} onChange={setWild}
-            title="First half: further into the tonalities’ ranges. Second half: random changes on top as well." />
-          <button className="icon dice" onClick={another} aria-label="Another variation" title="Another variation: the same pins">
-            <svg viewBox="0 0 16 16" className="icon__svg" aria-hidden="true">
-              <rect x="2" y="2" width="12" height="12" rx="2.5" />
-              <circle cx="5.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="10.5" cy="10.5" r=".9" fill="currentColor" />
-              <circle cx="10.5" cy="5.5" r=".9" fill="currentColor" /><circle cx="5.5" cy="10.5" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" />
-            </svg>
-          </button>
-          <button onClick={mutate} title="Move the pins and the controls a little: somewhere else on the wheel">Mutate</button>
-        </div>
         <div className="style-sheet__actions">
           <button className={`link${neutral ? ' hidden' : ''}`} onClick={reset} tabIndex={neutral ? -1 : 0}>Clear choices</button>
           <span />
@@ -193,12 +225,25 @@ export function StyleSheet() {
   )
 }
 
-function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+/** A label and its control, in the sheet's two columns. */
+function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="style-panel__group">
-      <h4>{title}{note && <span className="dim"> · {note}</span>}</h4>
+    <div className="style-row">
+      <span className="style-row__label">{label}</span>
       {children}
     </div>
+  )
+}
+
+/** A section folded away: its title and, while closed, what's set in it. */
+function Fold({ section, title, summary, open, onToggle, children }: {
+  section: Section; title: string; summary: string; open: boolean; onToggle(section: Section, open: boolean): void; children: ReactNode
+}) {
+  return (
+    <details className="style-fold" open={open} onToggle={(e) => e.currentTarget.open !== open && onToggle(section, e.currentTarget.open)}>
+      <summary><span className="style-fold__title">{title}</span>{!open && <span className="style-fold__said">{summary}</span>}</summary>
+      <div className="style-rows">{children}</div>
+    </details>
   )
 }
 
@@ -211,16 +256,18 @@ function Chip({ on, implied, onClick, title, children }: { on: boolean; implied?
 }
 
 /** A slider with its ends named; double-click goes back to neutral (or `onReset`). */
-function Slider({ label, left, right, value, min, max = 1, neutral, percent, title, dimmed, onChange, onReset }: {
-  label: string; left?: string; right?: string; value: number; min: number; max?: number; neutral?: number; percent?: boolean; title?: string; dimmed?: boolean
-  onChange(v: number): void; onReset?(): void
+function Slider({ label, left, right, value, min, max = 1, neutral, ticks, percent, title, dimmed, onChange, onReset }: {
+  label: string; left?: string; right?: string; value: number; min: number; max?: number; neutral?: number; ticks?: number[]; percent?: boolean; title?: string
+  dimmed?: boolean; onChange(v: number): void; onReset?(): void
 }) {
   const home = neutral ?? (min < 0 ? 0 : min)
+  const listId = ticks ? `ticks-${label.toLowerCase()}` : undefined
   return (
     <label className={`slider${dimmed ? ' slider--dimmed' : ''}`} onDoubleClick={() => !percent && (onReset ? onReset() : onChange(home))} title={title ?? (percent ? undefined : 'Double-click: back to neutral')}>
       <span className="slider__label">{label}</span>
       {left && <span className="slider__end dim">{left}</span>}
-      <input type="range" min={min} max={max} step={0.05} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} />
+      <input type="range" min={min} max={max} step={0.05} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} list={listId} />
+      {ticks && <datalist id={listId}>{ticks.map((t) => <option key={t} value={t} />)}</datalist>}
       {right && <span className="slider__end dim">{right}</span>}
       {percent && <span className="slider__value">{Math.round(value * 100)} %</span>}
     </label>

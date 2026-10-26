@@ -14,7 +14,6 @@ import { usePopover } from './usePopover'
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform)
 /** the style panel's width, px (narrower windows: all of it) */
-const SHEET_WIDTH = 540
 
 const STATUS_TEXT: Record<Status, string> = {
   offline: 'Not connected',
@@ -58,7 +57,8 @@ function useStyleLayout(styling: boolean) {
     const measure = () => {
       const bar = document.querySelector('.bar')?.getBoundingClientRect()
       const tab = document.querySelector('.style-tab')?.getBoundingClientRect()
-      const width = Math.min(SHEET_WIDTH, window.innerWidth)
+      // as wide as the CSS makes it (wider windows: the wheel and the controls side by side)
+      const width = document.querySelector('.style-sheet')?.getBoundingClientRect().width ?? Math.min(540, window.innerWidth)
       root.style.setProperty('--bar-h', `${bar?.height ?? 0}px`)
       root.style.setProperty('--keys-h', `${document.querySelector('.keys')?.getBoundingClientRect().height ?? 0}px`)
       if (bar && tab) {

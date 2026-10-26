@@ -24,6 +24,9 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
       <p className="dim">
         Version {version} · © 2026 Peter Witzel · MIT License ·{' '}
         <a href="privacy.html" target="_blank" rel="noreferrer">Privacy</a>
+        <br />
+        <a href="https://privatepublic-de.github.io/reface-dx-editor/" target="_blank" rel="noreferrer">privatepublic-de.github.io/reface-dx-editor</a> ·{' '}
+        <a href="https://github.com/privatepublic-de/reface-dx-editor" target="_blank" rel="noreferrer">Source on GitHub</a>
       </p>
       <p>A voice editor for the Yamaha reface DX over Web MIDI: every parameter on one screen, including those behind the DX’s Edit mode.</p>
 

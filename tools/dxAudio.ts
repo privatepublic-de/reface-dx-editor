@@ -1,7 +1,8 @@
 // Analysis for the sound tools (copied from nord-lead-2-editor): finding a note's steady part and period, averaging cycles, harmonic
 // amplitudes, spectra and RMS envelopes. Period finding and cycle averaging as in hydrasynth-editor's
 // tools/waveAudio.ts, with a free (wide) period search.
-import { RATE } from './dxTake'
+/** The sample rate of the takes. */
+export const RATE = 48000
 
 export const db = (x: number) => 20 * Math.log10(Math.abs(x) + 1e-12)
 

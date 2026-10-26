@@ -7,8 +7,9 @@ import { readFileSync } from 'node:fs'
 import type { Voice } from '../src/sysex/codec'
 import { Session } from '../src/sync/session'
 import { connectHelper } from './coremidiTransport'
+import { RATE } from './dxAudio'
 
-export const RATE = 48000
+export { RATE }
 export const INPUTS = (process.env.DX_INPUTS ?? '1,2').split(',').map(Number)
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))

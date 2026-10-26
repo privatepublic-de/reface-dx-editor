@@ -54,6 +54,8 @@ export interface StyleState extends Saved {
   addPin(angle: number, radius: number): number | null
   movePin(id: number, angle: number, radius: number): void
   setWeight(id: number, weight: number): void
+  /** several weights at once, heard as one change */
+  setWeights(weights: Record<number, number>): void
   removePin(id: number): void
   selectPin(id: number | null): void
   /** another variation: the same pins, another seed */
@@ -180,6 +182,7 @@ export const useStyle = create<StyleState>((set, get) => {
     },
     movePin: (id, angle, radius) => setPins(pins().map((p) => (p.id === id ? { ...p, angle, radius: Math.max(0, Math.min(1, radius)) } : p))),
     setWeight: (id, weight) => setPins(pins().map((p) => (p.id === id ? { ...p, weight: Math.max(0.05, Math.min(1, weight)) } : p))),
+    setWeights: (weights) => setPins(pins().map((p) => (p.id in weights ? { ...p, weight: Math.max(0.05, Math.min(1, weights[p.id])) } : p))),
     removePin(id) {
       if (get().selectedPin === id) set({ selectedPin: null })
       setPins(pins().filter((p) => p.id !== id))

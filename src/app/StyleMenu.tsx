@@ -20,6 +20,7 @@ import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
 import { useStyle, type Section, type SheetChoices } from './styleStore'
 import { OwnCurve, OwnSign, ShapeIcon } from './EnvelopeDrawings'
+import { Weights } from './Weights'
 import { Wheel } from './Wheel'
 
 /** Both hooks every render (an `a || b` of hooks skips the second while reading, and React fails). */
@@ -173,6 +174,7 @@ export function StyleSheet() {
       <div className="style-sheet__body">
         <div className="style-wheel" ref={first}>
           <Wheel />
+          <Weights />
           <p className="style-wheel__said" aria-live="polite">
             {c.pins.length || c.instrument ? sentence(generated, c.instrument) : 'Click the wheel to pin a tonality, up to three.'}
             {c.instrument && (

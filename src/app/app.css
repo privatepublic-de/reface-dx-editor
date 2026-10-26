@@ -439,6 +439,28 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .style-wheel__said { margin: 0; min-height: 2.9em; max-width: 34em; font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; color: var(--ink-dim); }
 .style-wheel__said b { font-weight: 600; }
 .style-wheel__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+/* the weights: one bar as wide as the wheel's rim, each pin's part of the whole in its colour; the edges between
+   the parts are what's dragged */
+.weights { position: relative; width: min(254px, 77%); height: 24px; margin: -4px 0 4px; border-radius: 6px; background: #ffffff10; }
+.weights--empty { visibility: hidden; }
+.weights__part { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 6px;
+  overflow: hidden; white-space: nowrap; font-size: 12px; line-height: 1; color: #1a120e; background: var(--colour);
+  border: 1px solid var(--panel-edge); cursor: default; transition: left .12s, width .12s; }
+.weights__part:first-child { border-radius: 6px 0 0 6px; }
+.weights__part:nth-last-child(1 of .weights__part) { border-radius: 0 6px 6px 0; }
+.weights__part:only-of-type { border-radius: 6px; }
+.weights__part.selected { box-shadow: inset 0 0 0 2px #fff; }
+/* the instrument: the ground the pins colour, so a little quieter */
+.weights__part--instrument { background: color-mix(in srgb, var(--colour) 55%, var(--panel)); color: var(--ink); }
+.weights__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.weights__share { flex: none; font-variant-numeric: tabular-nums; opacity: .8; }
+/* an edge: a wide grip over the seam, a bar that shows on hover and focus */
+.weights__edge { position: absolute; top: -4px; bottom: -4px; width: 14px; margin-left: -7px; z-index: 1; cursor: ew-resize; touch-action: none; outline: none; }
+.weights__edge::after { content: ''; position: absolute; left: 5px; top: 2px; bottom: 2px; width: 4px; border-radius: 2px;
+  background: #fff; border: 1px solid var(--panel-edge); opacity: 0; transition: opacity .12s; }
+.weights__edge:hover::after, .weights__edge:active::after { opacity: 1; }
+.weights__edge:focus-visible::after { opacity: 1; box-shadow: 0 0 0 2px var(--focus); }
+.weights:has(.weights__edge:active) .weights__part { transition: none; }
 /* the instrument started from: × goes back to the wheel alone */
 .style-wheel__off { margin-left: 6px; width: 22px; height: 22px; padding: 0; border-radius: 50%; line-height: 1; vertical-align: 1px; color: var(--ink-dim); }
 .style-wheel__off:hover { color: var(--ink); }

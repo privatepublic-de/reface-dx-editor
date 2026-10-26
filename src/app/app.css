@@ -138,6 +138,7 @@ main { padding: 14px 16px 40px; }
 .pedal__screen select option { color: var(--ink); background: var(--control); }
 .pedal__knobs { display: flex; justify-content: space-around; }
 /* wide windows: under the four operators, the chain at its natural size from the left */
+@media (min-width: 1501px) {
 .panel__ops > .fx-box { grid-column: 1 / -1; justify-self: start; width: max-content; max-width: 100%; }
 .panel__ops > .fx-box .fx-chain { gap: 10px; }
 .panel__ops > .fx-box .fx-chain__arrow { width: 22px; }
@@ -428,9 +429,56 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .slider__end:nth-of-type(2) { text-align: right; }
 .slider__value { font-variant-numeric: tabular-nums; min-width: 3em; text-align: right; }
 .slider input { width: 100%; min-width: 0; accent-color: var(--screen-ink); }
+/* ---------- the wheel (after the volca fm generator's), in the sheet ---------- */
+.chips--7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.style-wheel { display: grid; justify-items: center; gap: 2px; }
+.style-wheel .wheel { width: min(330px, 100%); }
+.style-wheel__pins { margin: 0; min-height: 1.4em; font-size: 13px; text-align: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; }
+.style-voice { display: flex; align-items: center; gap: 14px; font-size: 13px; padding: 6px 12px; border-radius: 8px; background: var(--screen-lit); }
+.style-voice .algo { width: 104px; height: auto; flex: none; }
+.style-voice .algo__line { stroke-width: 2.5; }
+.style-panel__play { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.style-panel__play .slider { flex: 1; }
+.slider--dimmed input { opacity: .45; }
+.wheel { position: relative; width: 100%; aspect-ratio: 1; touch-action: none; user-select: none; }
+.wheel-field { position: absolute; inset: 11.54%; /* the rim is 1 in a view 2.6 wide */ border-radius: 50%;
+  box-shadow: 0 0 80px -18px var(--glow), 0 0 0 1px #ffffff10; transition: box-shadow .6s; overflow: hidden; }
+/* mild at the centre, the full colour at the rim */
+.wheel-shade { position: absolute; inset: 0;
+  background: radial-gradient(circle, rgb(14 9 7 / .96) 0%, rgb(14 9 7 / .88) 20%, rgb(14 9 7 / .55) 45%, rgb(14 9 7 / .18) 80%, rgb(14 9 7 / 0) 100%); }
+.wheel-glow { position: absolute; inset: 0; mix-blend-mode: screen; filter: blur(4px); }
+.wheel-tip { position: absolute; z-index: 2; transform: translate(14px, 14px); pointer-events: none; white-space: nowrap; font-size: 13px;
+  padding: 3px 8px; border-radius: 6px; background: rgb(14 9 7 / .9); color: var(--ink); }
+.wheel-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wheel-hit { fill: transparent; cursor: crosshair; }
+.wheel-svg.dragging:not(.turning), .wheel-svg.dragging:not(.turning) * { cursor: grabbing; }
+.wheel-tick { stroke: rgb(14 9 7 / .55); stroke-width: .006; pointer-events: none; }
+.wheel-label { font: 500 .092px var(--font-narrow); letter-spacing: .006px; dominant-baseline: middle; pointer-events: none; }
+.pin { cursor: grab; outline: none; transition: opacity .15s; }
+.pin-dot { stroke: var(--bg); stroke-width: .014; }
+.pin-ring { fill: rgb(14 9 7 / .35); stroke: #ffffff2e; stroke-width: .012; }
+.pin-share { fill: none; stroke: #ffffffd9; stroke-width: .014; stroke-linecap: round; }
+.pin.selected .pin-ring, .pin:focus-visible .pin-ring { stroke: #ffffff8c; }
+.pin.selected .pin-dot, .pin:focus-visible .pin-dot { stroke: #fff; }
+.pin.removing { opacity: .3; }
+/* the dial's cursor: a turning arrow, white over a dark edge so it shows on every colour of the wheel */
+.pin-dial, .wheel-svg.turning, .wheel-svg.turning * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 8.5A7 7 0 1 0 19 13M19.5 3.5v5h-5' stroke='%230e0907' stroke-width='4'/%3E%3Cpath d='M18.5 8.5A7 7 0 1 0 19 13M19.5 3.5v5h-5' stroke='white' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, grab;
+}
+.pin-dial { fill: none; stroke: transparent; stroke-width: .05; pointer-events: stroke; }
+.pin-knob { fill: #fff; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.pin:hover .pin-knob, .pin.selected .pin-knob, .pin:focus-visible .pin-knob { opacity: .9; }
+/* the centre: the DX's screen, the voice's name on it */
+.wheel-centre { cursor: pointer; outline: none; }
+.wheel-centre circle { fill: var(--screen); stroke: var(--dx-signature); stroke-width: .01; transition: fill .15s; }
+.wheel-centre:hover circle, .wheel-centre:focus-visible circle { fill: #0f1d33; }
+.wheel-name { font: 600 .074px var(--font-narrow); fill: var(--screen-ink); text-anchor: middle; dominant-baseline: middle; }
+.wheel-hint { font: 400 .042px var(--font); fill: var(--ink-dim); text-anchor: middle; }
+
 button.link { background: none; border: none; padding: 0 4px; color: var(--ink-dim); text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 760px) {
   .chips--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chips--7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .chips--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .slider { grid-template-columns: 5.5em 1fr; }
   .slider__end { display: none; }

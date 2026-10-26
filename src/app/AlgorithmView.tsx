@@ -34,10 +34,12 @@ export interface AlgorithmViewProps {
   focus?: number
   /** a thumbnail: no numbers' feedback marks, just the shape */
   small?: boolean
+  /** each operator's colour (the Style sheet: the tonality it belongs to), null for the usual */
+  colours?: readonly (string | null)[]
   onOperator?(op: number): void
 }
 
-export function AlgorithmView({ algorithm, voice, focus, small, onOperator }: AlgorithmViewProps) {
+export function AlgorithmView({ algorithm, voice, focus, small, colours, onOperator }: AlgorithmViewProps) {
   const a = ALGORITHMS[algorithm]
   const pos = LAYOUT[algorithm]
   const xy = (op: number): [number, number] => [PAD + R + pos[op][0] * COL, PAD + R + pos[op][1] * ROW]
@@ -61,14 +63,16 @@ export function AlgorithmView({ algorithm, voice, focus, small, onOperator }: Al
       {[0, 1, 2, 3].map((op) => {
         const [x, y] = xy(op)
         const carrier = a.carriers.includes(op)
-        const on = !voice || voice.ops[op][0x00] === 1
+        // with colours, an operator without one is silent in that voice
+        const on = (!voice || voice.ops[op][0x00] === 1) && (!colours || colours[op] !== null)
+        const tint = colours?.[op] ? { stroke: colours[op]!, fill: `color-mix(in srgb, ${colours[op]} 35%, var(--screen))` } : undefined
         const fb = voice?.ops[op][0x13] ?? 0
         const square = voice?.ops[op][0x14] === 1
         const cls = `algo__op${carrier ? ' algo__op--carrier' : ''}${focus === op ? ' algo__op--focus' : ''}${on ? '' : ' algo__op--off'}`
         return (
           <g key={op} className={cls} onClick={onOperator && (() => onOperator(op))} role={onOperator ? 'button' : undefined}
             aria-label={onOperator ? `OP${op + 1}, ${carrier ? 'carrier' : 'modulator'}${on ? '' : ', off'}` : undefined}>
-            {carrier ? <rect x={x - R} y={y - R} width={R * 2} height={R * 2} rx={2} /> : <circle cx={x} cy={y} r={R} />}
+            {carrier ? <rect x={x - R} y={y - R} width={R * 2} height={R * 2} rx={2} style={tint} /> : <circle cx={x} cy={y} r={R} style={tint} />}
             {!small && <text x={x} y={y + 4}>{op + 1}</text>}
             {!small && fb > 0 && (
               <g className="algo__fb">

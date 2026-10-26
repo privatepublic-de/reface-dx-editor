@@ -36,6 +36,12 @@ with GitHub Pages once the repository is on GitHub.
   Changes, so sounding notes keep sounding. Feedback is one knob like the DX's FB slider (square to the left,
   saw to the right), keyboard scaling is drawn as on the DX's KSC-Level screen, and the envelopes can be
   dragged. Undo and redo; **Init** starts from the DX's VOICE INIT sound.
+- **Style:** make a voice by how it should sound. Pins on a wheel of twelve tonalities (Noise, Metal, Bell, Glass,
+  Tine, Wood, Organ, Sine, Reed, Brass, String, Breath; the same wheel as the
+  [volca fm generator](https://github.com/privatepublic-de/volca-fm-generator)): the heaviest makes the voice, the
+  others come in as a voice of their own or colour it. Brightness, complexity, motion, envelope, register and play
+  next to it; every change plays on the DX at once, **Apply** keeps it as one undo step. Every voice comes out about
+  as loud as every other: it is measured with a probe engine tuned to the DX ([docs/SOUND.md](docs/SOUND.md)).
 - **Following the DX:** FREQ, LEVEL, ALGO and FB moves on the DX light up in the editor; choosing a voice on
   the DX is followed (your edits are kept, with a button to send them back). Other edits on the DX send
   nothing: ↻ reads the voice again, and so does coming back to the window.
@@ -58,6 +64,9 @@ npm run probe        # the Phase 0 protocol probe, /probe.html
 npm test
 npm run list-voices -- some.syx
 ```
+
+Sound tools (the DX on the X18's inputs 1/2, `npx vite-node tools/<name>.ts`): `dxCurves.ts` measures the DX's
+curves, `engineCurves.ts` puts the probe engine beside them, `voiceProbe.ts` plays whole voices on both.
 
 The plan and its phases: [PLAN.md](PLAN.md). What the DX does over MIDI, as tested:
 [docs/FINDINGS.md](docs/FINDINGS.md). The chrome (top bar, dialogs, knob gestures) follows the sibling editors

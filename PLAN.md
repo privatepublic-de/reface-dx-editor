@@ -197,6 +197,8 @@ test/           bulk/checksum, codec round trip, param tables, cc mapping, sende
 **Phase 6: style-based Init, Adjust and Randomize. Built 2026-10-23, measured on the DX (docs/SOUND.md)** (§7.2): `style/` (choices, a seeded generator, the family templates as data tables, shapes per role, characters/brightness/treble/modifiers/effects, Init/Adjust/Randomize/Mutate and names), `applyVoice` in the store (one undo step, paced Parameter Changes; Init uses it too), **Init** (plain VOICE INIT, one click) beside **Style ▾**: a summary line, fixed chip grids (nothing moves while choosing; the family's own envelope and space outlined), Brightness, and More (length, evolving, expressive, treble, space, keep my effects); actions in two groups, *New voice in this style* (New voice, Another, Variation typical … wild, which replaced Randomize; family *Any*) and *Change this voice* (Towards style, which was Adjust, and Mutate). The choices are remembered in `reface-dx-editor.style`. Adjust blends towards a target: continuous values by the amount (at least one step), switches and ratios with that probability; the target stays until Roll again (its seed), each click draws anew. 175 tests: every family × shape and every character at the extremes gives a valid, audible voice named within 10 characters; same seed, same voice; Adjust 0 and Mutate 0 % change nothing and Adjust converges; keep my effects keeps both slots. On the DX (`tools/dxCurves.ts`, `tools/styleProbe.ts`): rate time halves per +10 and modulator depth is steep, so the shapes' rates and the level steps were retuned to the measured curves; the style probe checks 46/46 (brightness, characters, shapes, length). A comparison probe (`tools/styleCompare.ts`, docs/SOUND.md) then measured how different the options are against what another seed changes. The set was trimmed and retuned from it: FM noise as a tenth family, 4 characters (Classic FM into Expressive, Gritty into a Drive slider), 6 envelopes (Swell is brass's own, Atmo gone), brightness, evolving, expressive and treble rebuilt. Every family and shape pair now differs by more than a reroll; style probe 41/41. Saved choices naming removed options are cleaned on load. Then the style editor became a sub-editor: **Style…** opens a sheet docked on the right (the editor behind locked and dimmed, its knobs following; the keyboard pinned below). It caches the voice; every change plays at once (paced Parameter Changes, the latest coalescing); it starts from a new voice (Variation) or from my voice (a Towards morph from the cached voice, 0 = as it was), with Mutate on top; Apply makes one undo step, Cancel or Escape sends the cached voice back; another voice on the DX ends it. Simplified after use: the Style tab joins the panel it opens (docked on the left under it); New voice / My voice became one **Mix** slider (100 % is the new voice); Variation and Mutate one **Wild** slider (first half variation, second half mutation) with a dice for Another; characters are on/off; the summary line went (the chips and the voice name say it). Then three additions, measured: a **Wind** family, a **Glassy** character (the DX sparkle), and the effects as the DX's two slots, **Colour** (clean, drive, wah, chorus, flanger, phaser; it replaced the Drive slider) and **Space** (dry, room, hall, echo).
   Next: a listening session on the DX per family and shape, tuning the numbers in `style/templates.ts` and `style/shapes.ts`.
 
+**Phase 7: the tonality wheel. Planned 2026-10-26** (§8): the volca fm generator's wheel in place of families and characters, with an offline probe engine adapted from its DX7 engine.
+
 **Later, not in this plan:** DX7 (6-op) voice import with a lossy 4-op conversion, Looper control (MIDI only exposes clock and tempo).
 
 ---
@@ -265,3 +267,51 @@ One drag changes the same envelope stage in several operators.
 
 **Code:** `style/` with pure functions `(voice, choices, random) → voice`: `templates.ts` (families), `transforms.ts` (characters, brightness, treble, shapes, modifiers, effects; using `params/envelope.ts`), `random.ts` (a seeded generator, so tests are exact and Roll again is a new seed), `name.ts`. The store gets one `applyVoice(voice, label)` (the difference as Parameter Changes, one undo step), and the popover `StyleMenu.tsx` replaces the Init button. Tests: every result is a valid voice (`voiceProblems` empty, at least one carrier audible), the name fits 10 characters, the same seed gives the same voice, amount 0 and mutate 0 % change nothing, keep my effects keeps both slots.
 - **On the DX:** the templates are starting points to tune by ear: a listening session per family and shape, as with the demo voices.
+
+---
+
+## 8. The tonality wheel (Phase 7)
+
+The volca fm generator's way of making sounds (`../volca-fm-generator`, its PLAN §4) for the reface DX: pins on a wheel of twelve tonalities instead of families and characters, with four operators and the reface's own modulation. Code is copied and adapted, not shared.
+
+### 8.1 Decisions
+
+| Decision | |
+|---|---|
+| Where | The wheel **replaces Family and Character** in the Style sheet (§7.2). The characters overlap the tonalities (hollow ≈ Reed, metallic ≈ Metal, glassy ≈ Glass, noisy ≈ Noise, analogue ≈ String), so it isn't a second generator. Kept: the docked sheet, Mix, Wild, the dice, Apply/Cancel, Colour, Space and Mode. Same twelve names and hues as the volca generator. |
+| Probe engine | The volca generator's DX7 engine (MSFA's arithmetic, plain TypeScript), **copied and adapted to the reface**: four operators, the 12 algorithms, feedback on every operator (saw or square), 0–127 levels and rates on the reface's measured curves (docs/SOUND.md), its LFO and pitch EG. It renders offline: probes run in vitest instead of over the DX's audio out, and loudness, audibility and names render a note as in the volca generator. It renders the voice **dry**: the two effect slots stay checked on the DX. |
+| Calibration gate | A fixed set of voices recorded once on the DX (`tools/dxTake.ts`) and rendered by the engine. The engine is trusted as a probe once its curves land near the measured ones (rate → time, modulator level → harmonics, saw and square feedback) and the existing style checks (`styleProbe`, `styleCompare`) give the DX's verdicts. |
+| Instruments | "Start from…" (the volca's 41 DX7 recipes) is deferred: they are 6-operator voices, and the reface's factory voices stay out of the repository. |
+
+### 8.2 Four operators
+
+- **Algorithms 1–12 only** (`params/algorithms.ts`); every tonality gets a reface skeleton, no DX7 algorithm numbers carry over.
+- **Branches:** only algorithm 8 splits into two pairs. But every operator has its own feedback, so a lone carrier with saw or square feedback (algorithms 6, 7, 10, 11, 12) is a whole tone by itself: **one-operator branches** make sense here. Most secondary pins are grafts and transforms.
+- **Complexity** runs from 2 to 4 operators.
+- **Noise** is high levels, square feedback near the top and modulators at fixed frequencies (flatness 0.86, docs/SOUND.md), not the DX7's feedback 7 at level 97.
+- **Numbers** are new: levels and rates are 0–127 and steep (~50 a touch, ~75 strong; ±15 on a rate ≈ 3× the time). Skeletons start from `style/templates.ts` where one fits: Organ ← organ, Bell ← bell, Tine ← epiano, Noise ← noise, Breath ← wind, Brass ← brass, String ← strings, Reed ← the hollow character. Metal, Glass and Wood are new.
+
+### 8.3 What the reface adds
+
+| Control | On the reface |
+|---|---|
+| Feedback | Per operator, saw ↔ square, a sound-design tool of its own |
+| Motion | Per-operator PMD switch and AMD amount, detune −64…+63, the S&H waves, a modulation effect in slot 1 |
+| Play | Pitch EG switched on per operator (a blip on the tine only), velocity 0–127 per operator, mono / legato / portamento (part of a reface voice) |
+| Register | Transpose ±24 |
+| Treble | Keyboard scaling around C3, as now |
+
+**Actions:** the dice becomes **New voice** (fresh pins), **Mutate** moves the pins and controls, Wild's first half is **Variation** (the voice's details). Mix, Apply as one undo step, and Cancel stay; live preview uses the paced Parameter Changes the Mix slider already uses.
+
+### 8.4 Steps
+
+| # | Content | Done when |
+|---|---|---|
+| 1 | **Probe engine:** `src/engine/` (synth, tables, render, measure) adapted; reference takes on the DX; the calibration gate | The engine's curves near SOUND.md's; the style checks agree with the DX |
+| 2 | Tonalities as data, one pin, the generator pipeline; loudness and names through the engine | Same seed, same voice; every tonality × shape × radius extreme valid, audible and named in ≤ 10 characters |
+| 3 | Secondary pins: graft, transform, one-operator and algorithm 8 branches | None of 1000 random pin sets silent or clipping |
+| 4 | Controls: complexity, motion, register, play | Each control moves the measure it promises, at both ends |
+| 5 | UI: the wheel in the Style sheet, operators coloured by tonality in the algorithm view, `?demo` | Checked in the browser, desktop and phone width |
+| 6 | On the DX: listening and a short recording pass, retune; docs/SOUND.md | Each tonality recognisable alone; every pair further apart than a reroll (1–6 dB) |
+
+**Later:** instruments; the engine playing in the browser for `?demo`.

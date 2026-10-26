@@ -174,21 +174,22 @@ same voices on the DX and in the engine and measuring both with the same code:
 | --- | --- | --- |
 | Output level | **0.375 dB a step** from 127 down to 32 (−35.6 dB), steeper below (8: −59.6 dB) | the same table; within 0.1 dB |
 | EG level | **gentler than the output level**: 112 −2.6 dB, 96 −5.7, 64 −13, 32 −22.4, 8 −36 | the same table |
-| Feedback | **a wave shape, not noise**: saw feedback turns the sine into a saw (H2 −6.3, H3 −10, H4 −12.6 dB at 127, nearly 1/n), square feedback into a square (odd harmonics only). From ~96 the shape hardly changes, the wave only gets quieter (−6.6 dB at 127). **The same at any output level** (unlike the DX7, where feedback follows the operator's level) | the measured harmonics per value, H2–H8 within 0.5 dB |
-| Feedback as a modulator | a shaped modulator modulates **as if its fundamental keeps a sine's full strength**, the harmonics on top: at level 50 a saw modulator brightens its carrier to 15 harmonics, a square to 9 | the same; 10 and 8 harmonics (closer above) |
+| Feedback | alone, **no noise**: saw feedback turns the sine into a saw (H2 −6.3, H3 −10, H4 −12.6 dB at 127, nearly 1/n), square feedback into a square (odd harmonics only). From ~96 the shape hardly changes, the wave only gets quieter (−6.6 dB at 127). **The same at any output level** (unlike the DX7, where feedback follows the operator's level) | real feedback: the operator's wave (not its output), smoothed by a one-pole low-pass (0.2 a sample at 48 kHz), moves its own phase; square feeds back its absolute value. The saw's quieter top is an offset the loop builds up, which the output blocks (a 5 Hz high-pass, as the DX's output). H2–H5 within 1 dB, loudness within 0.6 dB |
+| Feedback under modulation | a carrier with feedback, **modulated fast and inharmonically (3 kHz), is as loud as a sine** and gets noisy (flatness 0.03–0.10); modulated 1 : 1 it keeps its quieter level. A shaped modulator brightens its carrier more than a sine: at level 50 a saw to 15 harmonics, a square to 9 | the same from the loop: the modulation scrambles it, the offset goes (within 1 dB); less noise (0.002–0.014). Shaped modulators 12.6 and 7 harmonics |
 | Velocity | full sensitivity takes **0.375 dB (one output level step) per velocity step** below 127, half sensitivity half that | the same; within 0.3 dB |
 | Carriers | **the output is divided by the number of carriers**: two carriers 6 dB, four 12 dB quieter than one at the same levels | the same |
 | Attack | the amplitude **approaches 1.5 × its target exponentially** and stops there: fast at first, slowing into the top | the same; within 1–3 dB along the way, times within 3 % |
 | Modulator depth | (2026-10-23) | 0.7 dB mean error on H2–H5 at 0.375 dB a step and 2.0 cycles at full level |
 
-**Noise** comes from square (or saw) waves modulating deep, not from feedback alone: the FM noise voice measures a
-flatness of 0.81 on the DX (0.75 in the engine); a square modulator grafted into Metal 0.013 at level 80, 0.032 at
-100, 0.045 at 112 and no more above (engine 0.020, 0.031, 0.027).
+**Noise** comes from feedback operators modulating and modulated deep: the FM noise voice measures a flatness of
+0.81 and −24.8 dB on the DX, 0.83 and −24.0 dB in the engine (with the earlier wave-table feedback 0.75 and ~5 dB
+quieter: the loop's offset had been taken as a fixed loss). A square modulator grafted into Metal 0.012 at level 80
+and 0.045 at 112 (engine 0.010, 0.061).
 
-**Whole voices** (one pin per tonality): loudness within ~1–2 dB, brightness and envelope close for most. Still off:
-String is twice as bright in the engine (centroid 9.0 against 4.6 harmonics), FM noise ~5 dB quieter, a saw
-modulator at 110 9 dB louder, and the DX's release after key-off at rate 127 isn't instant (−15 … −60 dB 100 ms
-later, depending on the voice). Still estimates: keyboard and rate scaling, detune, LFO, pitch EG rates, AMD.
+**Whole voices** (one pin per tonality and two-pin mixes): loudness within ~1–2 dB, brightness and envelope close.
+Still off: a saw modulator at 110 is ~3 dB louder in the engine, a carrier with feedback under fast modulation less
+noisy, and the DX's release after key-off at rate 127 isn't instant (−15 … −60 dB 100 ms later, depending on the
+voice). Still estimates: keyboard and rate scaling, detune, LFO, pitch EG rates, AMD.
 
 ## Loudness levelling (PLAN §8.4)
 
@@ -199,5 +200,5 @@ came out 0–12 dB below that sine in the engine; the four-carrier organ can onl
 divides by the carriers.
 
 On the DX (`tools/voiceProbe.ts tonalities mixes`, 2026-10-26, the loudest 20 ms): the 12 tonalities and 6 two-pin
-mixes from −28.6 to −31.8 dB, a spread of 3.2 dB (before: about 10 dB). FM noise is the exception at −26.2 dB: the
-engine makes it ~4 dB quieter than the DX does (its flatness is lower too, 0.51 against 0.71).
+mixes from −28.8 to −32.0 dB, a spread of 3.2 dB (before: about 10 dB). With the wave-table feedback FM noise had
+stood out at −26.2 dB; with the feedback loop it is in line.

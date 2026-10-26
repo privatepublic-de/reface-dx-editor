@@ -94,14 +94,29 @@ describe('against the DX (test/fixtures/dx-curves.json)', () => {
 })
 
 describe('feedback, against the DX (test/fixtures/dx-curves.json)', () => {
-  it('shapes the wave as the DX does: H2–H8 within 0.5 dB, for saw and square, at full level and at 100', () => {
+  it('shapes the wave as the DX does: H2–H5 within 1 dB (faint ones 2), the loudness within 0.7 dB, saw and square, at 127 and 100', () => {
+    const sine = engine('carrier')[0].m.db as number
     for (const p of points('feedback')) {
       const name = `${p.at.square ? 'square' : 'saw'}${p.at.level ? '100' : ''}` as keyof typeof CURVES.feedback
-      const dx = (CURVES.feedback[name] as Record<string, { h: number[] }>)[String(p.at.feedback)]
-      const h = p.measure(Float64Array.from(renderNote(p.voice, { note: p.note, holdSeconds: p.holdS, sampleRate: RATE }))).h as number[]
-      // the harmonics that are there (a square's even ones are below −80 on both)
-      for (let k = 1; k < 8; k++) if (dx.h[k] > -60) expect(Math.abs(h[k] - dx.h[k]), `${JSON.stringify(p.at)} H${k + 1}`).toBeLessThan(0.5)
+      const dx = (CURVES.feedback[name] as Record<string, { h: number[]; db: number }>)[String(p.at.feedback)]
+      const m = p.measure(Float64Array.from(renderNote(p.voice, { note: p.note, holdSeconds: p.holdS, sampleRate: RATE })))
+      const h = m.h as number[]
+      // the harmonics that are there (a square's even ones are below −80 on both); the faint ones within 2 dB
+      for (let k = 1; k < 5; k++) if (dx.h[k] > -60) expect(Math.abs(h[k] - dx.h[k]), `${JSON.stringify(p.at)} H${k + 1}`).toBeLessThan(dx.h[k] > -40 ? 1 : 2)
+      expect(Math.abs((m.db as number) - sine - (dx.db - CURVES.carrier['127'])), `${JSON.stringify(p.at)} dB`).toBeLessThan(0.7)
     }
+  })
+
+  it('a carrier with feedback, modulated fast and inharmonically, is as loud as a sine carrier (voiceProbe noisegap)', () => {
+    const v = (carrierFb: number) => voice((x) => {
+      x.common[0x10] = 4
+      x.ops.forEach((o) => o.set([127, 127, 127, 127, 127, 127, 127, 0], 0x01))
+      x.ops[0].set([carrierFb, 1], 0x13)
+      x.ops[1][0x12] = 100
+      x.ops[1].set([1, ...fixedBytes(3000)], 0x15)
+    })
+    const loud = (x: Voice) => toDb(rms(steady(play(x, { note: 48 }))))
+    expect(Math.abs(loud(v(127)) - loud(v(0)))).toBeLessThan(1.5)
   })
 
   it('never turns to noise, and doesn’t follow the operator’s level', () => {

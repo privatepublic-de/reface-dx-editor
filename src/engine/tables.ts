@@ -92,58 +92,23 @@ export function kscDb(note: number, leftDepth: number, rightDepth: number, leftC
 /** Detune −64…+63 as the DX shows it: a frequency factor (estimate: 1.00034 per step, from the RDX emulator, PLAN §0). */
 export const detuneFactor = (detune: number) => 1.00034 ** (detune - 64)
 
-/** Feedback, measured (OP1 alone at C3, 2026-10-26): it doesn't feed the output back into the phase as on the DX7, it
- *  shapes the wave, from a sine to a saw (all harmonics, 1/n) or a square (odd ones), the same at any output level,
- *  and never turns to noise. Per feedback value: the loudness against a sine (dB) and the harmonics against H1 (dB):
- *  saw H1…H8, square H1, H3, H5, H7. */
-const SAW: readonly [number, number, readonly number[]][] = [
-  [0, 0, [0, -120, -120, -120, -120, -120, -120, -120]],
-  [32, 0, [0, -15.3, -27.1, -37.5, -47.1, -56.3, -65.1, -73.5]],
-  [48, 0, [0, -11.4, -19.4, -26, -31.8, -37.2, -42.2, -47.1]],
-  [64, -0.1, [0, -9, -14.7, -19.1, -22.8, -26.1, -29, -31.8]],
-  [80, -0.5, [0, -7.6, -12.1, -15.4, -18.1, -20.4, -22.3, -24.1]],
-  [96, -1.7, [0, -6.8, -10.9, -13.7, -16, -17.9, -19.5, -20.9]],
-  [104, -2.7, [0, -6.6, -10.5, -13.3, -15.5, -17.2, -18.8, -20.1]],
-  [112, -3.9, [0, -6.5, -10.3, -13, -15.1, -16.8, -18.3, -19.5]],
-  [120, -5.3, [0, -6.4, -10.1, -12.8, -14.8, -16.5, -17.9, -19.1]],
-  [127, -6.6, [0, -6.3, -10, -12.6, -14.6, -16.3, -17.6, -18.8]],
+/** Feedback, measured on the DX (tools/dxCurves.ts feedback, tools/voiceProbe.ts noisegap, 2026-10-26): the operator's
+ *  own wave, smoothed by a one-pole low-pass (FEEDBACK_SMOOTHING), moves its phase. Saw feeds back the wave itself
+ *  (all harmonics, towards a saw), square its absolute value (odd harmonics, towards a square). The wave, not the
+ *  output, is fed back, so it is the same at any level, unlike the DX7. The saw builds up an offset, which the DX's
+ *  output blocks: that's why it is quieter at the top (−6.6 dB at 127). Under fast modulation the loop is scrambled:
+ *  the offset goes (a modulated carrier with feedback is as loud as a sine) and noise comes in. */
+export const FEEDBACK_SMOOTHING = 0.2
+/** The loop gain (cycles of phase per unit of the smoothed wave) at feedback 0, 32 … 127: saw, square. Fitted to the
+ *  DX's harmonics and loudness by hand (tools/engineCurves.ts feedback: H2–H5 within 0.6 dB, loudness 0.5 dB). */
+const FEEDBACK_GAIN: readonly [number, number, number][] = [
+  [0, 0, 0], [32, 0.055, 0.057], [48, 0.093, 0.095], [64, 0.14, 0.14], [80, 0.2, 0.2], [96, 0.29, 0.27],
+  [104, 0.33, 0.32], [112, 0.42, 0.4], [120, 0.52, 0.5], [127, 0.6, 0.62],
 ]
-const SQUARE: readonly [number, number, readonly number[]][] = [
-  [0, 0, [0, -120, -120, -120]],
-  [32, -0.1, [0, -21, -31.3, -38.5]],
-  [48, -0.1, [0, -17, -25.2, -31.3]],
-  [64, -0.3, [0, -14.4, -20.8, -25.6]],
-  [80, -0.7, [0, -12.6, -17.9, -21.6]],
-  [96, -1.6, [0, -11.6, -16.3, -19.5]],
-  [104, -2.5, [0, -11.3, -15.9, -18.9]],
-  [112, -3.6, [0, -11.1, -15.7, -18.6]],
-  [120, -4.9, [0, -11, -15.5, -18.4]],
-  [127, -6.1, [0, -10.9, -15.3, -18.1]],
-]
-
-/** An operator's wave for feedback 0–127, saw or square: the loudness against a sine (dB) and the amplitude of
- *  every harmonic up to `maxHarmonic` against H1. Between the measured values, linear in dB; above H8 (H7 for the
- *  square) the harmonics go on falling as a power law through the last two measured. */
-export function feedbackWave(feedback: number, square: boolean, maxHarmonic: number): { gainDb: number; harmonics: number[] } {
-  const table = square ? SQUARE : SAW
-  const i = Math.max(0, table.findIndex(([f]) => f >= feedback) - 1)
-  const [f0, g0, h0] = table[i]
-  const [f1, g1, h1] = table[Math.min(table.length - 1, i + 1)]
-  const t = f1 === f0 ? 0 : Math.max(0, Math.min(1, (feedback - f0) / (f1 - f0)))
-  const db = h0.map((x, k) => x + (h1[k] - x) * t)
-  // the measured harmonic numbers: 1…8, or the odd 1, 3, 5, 7
-  const n = db.map((_, k) => (square ? 2 * k + 1 : k + 1))
-  const last = db.length - 1
-  const power = (db[last - 1] - db[last]) / 20 / Math.log10(n[last] / n[last - 1])
-  const harmonics: number[] = []
-  for (let h = 1; h <= maxHarmonic; h++) {
-    if (square && h % 2 === 0) { harmonics.push(0); continue }
-    const k = n.indexOf(h)
-    harmonics.push(k >= 0 ? 10 ** (db[k] / 20) : 10 ** (db[last] / 20) * (n[last] / h) ** power)
-  }
-  return { gainDb: g0 + (g1 - g0) * t, harmonics }
+/** An operator's feedback 0–127 as its loop gain, saw or square. */
+export function feedbackGain(feedback: number, square: boolean): number {
+  return lerp(FEEDBACK_GAIN.map(([f, saw, sq]) => [f, square ? sq : saw] as const), feedback)
 }
-
 /** LFO speed 0–127 → Hz (estimate: 0.06 … 50 Hz, exponential). */
 export const lfoHz = (speed: number) => 0.06 * 2 ** ((speed / 127) * Math.log2(50 / 0.06))
 /** LFO delay 0–127 → seconds before the LFO starts, then as long again to fade in (estimate: up to ~5 s). */

@@ -1,5 +1,6 @@
 // The whole-voice probes (PLAN §8, the calibration gate's second half): which voices tools/voiceProbe.ts plays on
 // the DX and renders in the engine, and what it measures, shared with the tests and experiments.
+import { fixedBytes } from '../src/params/display'
 import { initVoice } from '../src/params/init'
 import { cloneVoice, type Voice } from '../src/sysex/codec'
 import { angleOf, TONALITIES, type Tonality } from '../src/wheel/choices'
@@ -51,6 +52,23 @@ export function probes(groups: readonly string[] = []): Probe[] {
       out.push({ group: 'noise', label: `metal + noise graft ${level}`, voice: v, note: 48, holdS: 0.8 })
     }
     out.push({ group: 'noise', label: 'noise alone', voice: wheel([['noise', 1]], 'gate').voice, note: 48, holdS: 0.8 })
+  }
+  if (want('noisegap')) {
+    // the FM noise voice taken apart: a carrier with or without square feedback, modulated by a sine or by a square
+    // (feedback 127) at a fixed or a 1 : 1 frequency, at a moderate and a deep level
+    for (const carrierFb of [0, 127]) for (const modFb of [0, 127]) for (const [fixed, level] of [[0, 100], [1, 100], [1, 124]] as const) {
+      const v = cloneVoice(initVoice())
+      v.common[0x10] = 4 // algorithm 5: OP2–4 each into OP1
+      v.ops.forEach((o) => o.set([127, 127, 127, 127, 127, 127, 127, 0], 0x01))
+      v.ops[0][0x12] = 118
+      v.ops[0].set([carrierFb, 1], 0x13)
+      v.ops[1][0x12] = level
+      v.ops[1].set([modFb, 1], 0x13)
+      if (fixed) v.ops[1].set([1, ...fixedBytes(3000)], 0x15)
+      v.ops[2][0x12] = 0
+      v.ops[3][0x12] = 0
+      out.push({ group: 'noisegap', label: `c${carrierFb} m${modFb} ${fixed ? '3k' : '1to1'} ${level}`, voice: v, note: 48, holdS: 0.8 })
+    }
   }
   if (want('mixes')) for (const [a, b, w] of [['bell', 'warm', 0.5], ['tine', 'reed', 0.8], ['organ', 'breath', 0.5], ['metallic', 'noise', 0.4], ['string', 'glass', 0.4], ['wooden', 'bell', 0.4]] as [Tonality, Tonality, number][]) {
     out.push({ group: 'mixes', label: `${a} + ${b} ${w}`, voice: wheel([[a, 1], [b, w]]).voice, note: 60, holdS: 1.2 })

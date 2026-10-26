@@ -1,5 +1,5 @@
 // A reface DX voice as sound, for probes (PLAN §8): four operators, the 12 algorithms, feedback on every
-// operator (a wave shape from sine to saw or square, as measured), the envelopes, keyboard scaling, velocity, LFO and pitch EG. Offline only: it renders a
+// operator (its smoothed wave fed back into its phase: saw or square, as measured), the envelopes, keyboard scaling, velocity, LFO and pitch EG. Offline only: it renders a
 // note in tests and tools so a style's change can be measured without the DX's audio out. The DX's effects aren't
 // in it: it renders dry. Built after the volca fm generator's DX7 engine, in its own units: levels in dB, phase in
 // cycles, modulation in cycles. Plain TypeScript, no browser globals.
@@ -7,7 +7,7 @@ import { ALGORITHMS } from '../params/algorithms'
 import { fixedHzOf, ratioOf } from '../params/display'
 import type { Voice } from '../sysex/codec'
 import {
-  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, detuneFactor, egLevelDb, feedbackWave, kscDb, levelDb, lfoDelayS, lfoHz,
+  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, detuneFactor, egLevelDb, FEEDBACK_SMOOTHING, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
   pitchEgSemitones, pitchEgSemitonesPerS, pitchModSemitones, rateScale, SILENT_DB, TUNING, velocityDb,
 } from './tables'
 
@@ -190,10 +190,10 @@ interface OpState {
   offsetDb: number
   hz: number
   phase: number
-  /** the wave its feedback shapes, one cycle, its fundamental as a sine's, or null for a sine */
-  wave: Float32Array | null
-  /** how loud that wave is heard against how hard it modulates (measured, feedbackWave) */
-  heard: number
+  /** feedback: the loop gain, square (its absolute value fed back), and the smoothed wave */
+  feedback: number
+  square: boolean
+  smoothed: number
   amdDb: number
   pmd: boolean
   peg: boolean
@@ -207,14 +207,17 @@ class Note {
   private carriers: readonly number[] = [0]
   private modulators: number[][] = [[], [], [], []]
   private pmdSemitones = 0
+  /** the feedback's low-pass per sample, FEEDBACK_SMOOTHING at 48 kHz */
+  private readonly smoothing: number
   key = -1
   released = false
   active = false
   age = 0
 
   constructor(private readonly sampleRate: number) {
+    this.smoothing = 1 - (1 - FEEDBACK_SMOOTHING) ** (48000 / sampleRate)
     this.ops = Array.from({ length: 4 }, () => ({
-      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, wave: null, heard: 1, amdDb: 0, pmd: false, peg: false, y: 0,
+      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, feedback: 0, square: false, smoothed: 0, amdDb: 0, pmd: false, peg: false, y: 0,
     }))
     this.pitchEnv = new PitchEnv(sampleRate)
   }
@@ -236,9 +239,9 @@ class Note {
       s.offsetDb = levelDb(o[0x12]) + kscDb(note, o[0x0a], o[0x0b], o[0x0c], o[0x0d]) + velocityDb(velocity, o[0x11])
       s.env.init([o[0x01], o[0x02], o[0x03], o[0x04]], [o[0x05], o[0x06], o[0x07], o[0x08]], rateScale(note, o[0x09]))
       s.hz = (o[0x15] ? fixedHzOf(o[0x16], o[0x17]) : keyHz * ratioOf(o[0x16], o[0x17])) * detuneFactor(o[0x18])
-      const wave = o[0x13] ? waveOf(o[0x13], o[0x14] !== 0, Math.floor(this.sampleRate / 2 / Math.max(1, s.hz))) : null
-      s.wave = wave?.samples ?? null
-      s.heard = wave?.heard ?? 1
+      s.square = o[0x14] !== 0
+      s.feedback = feedbackGain(o[0x13], s.square)
+      s.smoothed = 0
       s.amdDb = ampModDb(o[0x0e])
       s.pmd = o[0x0f] !== 0
       s.peg = o[0x10] !== 0
@@ -274,11 +277,15 @@ class Note {
         let mod = 0
         for (const m of this.modulators[i]) mod += this.ops[m].y
         const p = s.phase + mod
-        s.y = amp * (s.wave ? lookup(s.wave, p) : Math.sin(2 * Math.PI * p))
+        const fb = s.feedback ? s.feedback * (s.square ? Math.abs(s.smoothed) : s.smoothed) : 0
+        const wave = Math.sin(2 * Math.PI * (p + fb))
+        // the wave, not the output, feeds back: the same at any level (measured)
+        s.smoothed += this.smoothing * (wave - s.smoothed)
+        s.y = amp * wave
       }
     }
     let out = 0
-    for (const c of this.carriers) out += (this.ops[c].y * this.ops[c].heard) / TUNING.maxCycles
+    for (const c of this.carriers) out += this.ops[c].y / TUNING.maxCycles
     // the DX divides by the number of carriers (measured: two carriers 6 dB, four 12 dB quieter than one)
     out /= this.carriers.length
     if (this.released && this.carriers.every((c) => !this.ops[c].on || (this.ops[c].env.finished && this.ops[c].env.db + this.ops[c].offsetDb <= SILENT_DB))) {
@@ -286,41 +293,6 @@ class Note {
     }
     return out * TUNING.outputScale
   }
-}
-
-/** One cycle of a feedback wave, in this many points. */
-const WAVE_SIZE = 2048
-const waves = new Map<string, { samples: Float32Array; heard: number }>()
-
-/** The wave for feedback `fb`, saw or square, with the harmonics up to `maxHarmonic` (below half the sample rate,
- *  so a high note doesn't alias). Measured on the DX (tools/voiceProbe.ts, 2026-10-26): as a modulator its
- *  fundamental keeps a sine's full strength and the harmonics come on top (a saw at level 50 brightens its carrier
- *  to ~10–15 harmonics; scaled to the loudness heard, only to 6); heard as a carrier, it is as loud against a sine as
- *  feedbackWave says, so `heard` scales it down there. Cached. */
-function waveOf(fb: number, square: boolean, maxHarmonic: number) {
-  const top = Math.max(1, Math.min(64, maxHarmonic))
-  const key = `${fb}${square ? 's' : 'w'}${top}`
-  let w = waves.get(key)
-  if (w) return w
-  const { gainDb, harmonics } = feedbackWave(fb, square, top)
-  const samples = new Float32Array(WAVE_SIZE)
-  for (let i = 0; i < WAVE_SIZE; i++) {
-    let x = 0
-    harmonics.forEach((a, k) => { if (a) x += a * Math.sin((2 * Math.PI * (k + 1) * i) / WAVE_SIZE) })
-    samples[i] = x
-  }
-  const rms = Math.sqrt(harmonics.reduce((sum, a) => sum + a * a, 0) / 2)
-  w = { samples, heard: 10 ** (gainDb / 20) / Math.SQRT2 / rms }
-  waves.set(key, w)
-  return w
-}
-
-/** The wave at phase `p` (cycles), linearly between its points. */
-function lookup(w: Float32Array, p: number): number {
-  const x = (p - Math.floor(p)) * WAVE_SIZE
-  const i = Math.floor(x)
-  const f = x - i
-  return w[i] * (1 - f) + w[(i + 1) % WAVE_SIZE] * f
 }
 
 /** The reface DX plays eight notes at once. */
@@ -357,13 +329,20 @@ export class Synth {
     for (const n of this.notes) if (n.active && !n.released && n.key === key) n.release()
   }
 
+  /** the DX's output blocks an offset (a saw's feedback builds one up): a high-pass at 5 Hz */
+  private dcIn = 0
+  private dcOut = 0
+
   /** Fills `out` from `start` for `length` samples. */
   render(out: Float32Array, start = 0, length = out.length - start) {
+    const r = Math.exp((-2 * Math.PI * 5) / this.sampleRate)
     for (let i = start; i < start + length; i++) {
       this.lfo.next()
       let sum = 0
       for (const n of this.notes) if (n.active) sum += n.next(this.lfo)
-      out[i] = sum
+      this.dcOut = sum - this.dcIn + r * this.dcOut
+      this.dcIn = sum
+      out[i] = this.dcOut
     }
   }
 }

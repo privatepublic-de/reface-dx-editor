@@ -298,7 +298,7 @@ algorithms 12; where a voice needs all six (two 3-operator stacks, a hammer besi
 reface's own behaviour differs too: no carrier rises faster than ~24 ms (the first click of a hammer or a pluck
 goes), a fast first decay is a coin toss, envelopes rise in amplitude where the DX7's climb evenly in dB (a slow
 brass swell opens early), feedback never turns to noise on its own, and the pitch EG starts at L1. The distances
-below are measured against the volca's DX7 engine; most voices land within 2–5 dB, none at 0. Nothing imported
+below are measured against the volca's DX7 engine; most voices land between 1 and 5 dB, none at 0. Nothing imported
 sounds exactly as in Dexed or on a real DX7: listen, keep what works, and edit from there.
 
 Start from… offers the volca fm generator's 41 instruments: Yamaha's DX7, TX7, TX816 and VRC voices, its own drums,

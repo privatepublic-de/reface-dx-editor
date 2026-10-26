@@ -424,6 +424,15 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 .style-wheel .wheel { width: min(330px, 100%); }
 .slider--dimmed input { opacity: .45; }
 .chips--8 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* the envelope chips: a drawing of loudness against time over the name (the dashed line: the key let go) */
+.chips--drawn .chip { display: grid; justify-items: center; gap: 1px; padding: 3px 2px 2px; font-size: 12px; }
+.eg-icon { width: 100%; max-width: 64px; height: 20px; overflow: visible; }
+.eg-icon path { fill: none; stroke: var(--ink-dim); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.eg-icon__release { stroke: #ffffff2e; stroke-width: 1; stroke-dasharray: 2 2; }
+.eg-icon--sign path { stroke-dasharray: 3 3; opacity: .7; }
+.chip.on .eg-icon path { stroke: #111; }
+.chip.on .eg-icon__release { stroke: #0005; }
+.chip:hover:not(.on) .eg-icon path { stroke: var(--ink); }
 /* under the wheel (or beside it): the controls, one column */
 .style-controls { display: grid; gap: 14px; align-content: start; }
 /* the wheel, what it made in one sentence, and the three ways on beside it */

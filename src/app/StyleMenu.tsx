@@ -16,6 +16,7 @@ import { TONALITY_DEFS } from '../wheel/tonalities'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
 import { useStyle, type Section, type SheetChoices } from './styleStore'
+import { OwnCurve, OwnSign, ShapeIcon } from './EnvelopeDrawings'
 import { Wheel } from './Wheel'
 
 /** Both hooks every render (an `a || b` of hooks skips the second while reading, and React fails). */
@@ -151,11 +152,16 @@ export function StyleSheet() {
             title="Pure: two operators. Dense: all four, stacked deeper. The middle mark: the tonalities’ own." />
           <Slider label="Motion" left="still" right="alive" value={c.motion} min={0} onChange={(v) => set({ motion: v })} />
           <Row label="Envelope">
-            <div className="chips chips--8">
-              <Chip on={!c.shape} onClick={() => set({ shape: null })} title={ownShape ? `The ${dominantName}’s own: ${ENVELOPE_LABELS[ownShape].toLowerCase()}` : 'The tonality’s own'}>Own</Chip>
+            <div className="chips chips--8 chips--drawn">
+              <Chip on={!c.shape} onClick={() => set({ shape: null })}
+                title={`${ownShape ? `The ${dominantName}’s own: ${ENVELOPE_LABELS[ownShape].toLowerCase()}` : 'The tonality’s own'}. Drawn: the envelope you hear, as the DX plays it`}>
+                {!c.shape && voice ? <OwnCurve voice={voice} /> : <OwnSign />}
+                <span>Own</span>
+              </Chip>
               {ENVELOPES.map((s) => (
                 <Chip key={s} on={c.shape === s} implied={!c.shape && ownShape === s} onClick={() => set({ shape: c.shape === s ? null : s })} title={ENVELOPE_HINTS[s]}>
-                  {ENVELOPE_LABELS[s]}
+                  <ShapeIcon shape={s} />
+                  <span>{ENVELOPE_LABELS[s]}</span>
                 </Chip>
               ))}
             </div>

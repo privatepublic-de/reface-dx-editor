@@ -355,3 +355,16 @@ export class Synth {
     }
   }
 }
+
+/** An operator envelope's level over time, in dB, every `stepS` seconds: held until `holdS`, then let go, until
+ *  `totalS`. The engine's own envelope (as measured on the DX), for drawing it. */
+export function envelopeDb(rates: number[], levels: number[], holdS: number, totalS: number, stepS = 0.005): number[] {
+  const env = new Env(1 / stepS)
+  env.init(rates, levels, 1)
+  const out: number[] = []
+  for (let k = 0; k * stepS < totalS; k++) {
+    if (k * stepS >= holdS) env.keyUp()
+    out.push(env.next())
+  }
+  return out
+}

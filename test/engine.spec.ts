@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderNote, type RenderOptions } from '../src/engine/render'
+import { envelopeDb } from '../src/engine/synth'
 import { centroid, flatness, pitch, rms, slice, toDb, type Segment } from '../src/engine/measure'
 import { ALGORITHMS } from '../src/params/algorithms'
 import { fixedBytes } from '../src/params/display'
@@ -260,4 +261,16 @@ describe('release, LFO, pitch EG, detune and scaling, against the DX (dx-curves.
       }
     })
   }
+})
+
+describe('the envelope as drawn', () => {
+  it('follows the measured envelope: R1 60 reaches 90 % in ~0.31 s, held at L1, let go at R4', () => {
+    const step = 0.005
+    const db = envelopeDb([60, 127, 127, 127], [127, 127, 127, 0], 1, 1.5, step)
+    const at90 = db.findIndex((x) => 10 ** (x / 20) >= 0.9) * step
+    expect(at90).toBeGreaterThan(0.26)
+    expect(at90).toBeLessThan(0.36)
+    expect(db[Math.round(0.9 / step)]).toBeCloseTo(0, 1)
+    expect(db[db.length - 1]).toBeLessThan(-60)
+  })
 })

@@ -2,9 +2,11 @@
 // voices kept in this browser (click one to play it on the DX: the whole voice goes over, which cuts sounding
 // notes, and it is one undo step). Store always means the DX's memory, Export always means a .syx file.
 import { useMemo, useRef, useState } from 'react'
+import { readDx7Syx } from '../dx7/sysex'
 import { exportSyx, fileName, type Entry } from '../library/library'
 import { locationName, voiceName } from '../sysex/codec'
 import { download } from './download'
+import { useDx7 } from './dx7Store'
 import { useLibrary } from './libraryStore'
 import { isOnline, useEditor } from './store'
 
@@ -102,10 +104,16 @@ function Voices() {
             onClick={() => keepAll(memory.flatMap((m, p) => (m ? [{ voice: m.voice, source: `${locationName(p)} on the DX` }] : [])))}>
             Keep DX memory
           </button>
-          <button onClick={() => file.current?.click()} title="Opens .syx files: single voices, banks, the DX’s own dumps">Import .syx…</button>
+          <button onClick={() => file.current?.click()} title="Opens .syx files: the DX’s own voices and dumps go into the library; DX7 voices and banks open a window to pick, hear and convert them">Import .syx…</button>
           <input ref={file} type="file" accept=".syx,application/octet-stream" multiple hidden
             onChange={async (e) => {
-              for (const f of Array.from(e.target.files ?? [])) importFile(new Uint8Array(await f.arrayBuffer()), f.name)
+              for (const f of Array.from(e.target.files ?? [])) {
+                const bytes = new Uint8Array(await f.arrayBuffer())
+                // DX7 voices open the import window: pick, hear, keep (a reface file goes straight in)
+                const dx7 = readDx7Syx(bytes)
+                if (dx7.voices.length) useDx7.getState().open(f.name, dx7.voices)
+                else importFile(bytes, f.name)
+              }
               e.target.value = ''
             }} />
           <button disabled={!shown.length} onClick={() => download(query ? `${query}.syx` : 'reface DX library.syx', exportSyx(shown.map((e) => e.voice)))}

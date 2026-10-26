@@ -27,7 +27,6 @@
     "vite.config.ts"
   ],
   "exclude": [
-    "tools/fromDx7.ts",
-    "tools/dx7Convert.ts"
+    "tools/fromDx7.ts"
   ]
 }

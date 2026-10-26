@@ -316,7 +316,7 @@ The volca fm generator's way of making sounds (`../volca-fm-generator`, its PLAN
 | 5 | UI: the wheel in the Style sheet, operators coloured by tonality in the algorithm view, `?demo` | Checked in the browser, desktop and phone width |
 | 6 | On the DX: listening and a short recording pass, retune; docs/SOUND.md | Each tonality recognisable alone; every pair further apart than a reroll (1–6 dB) |
 
-**Later:** the engine playing in the browser for `?demo`; importing any DX7 cartridge with the same converter.
+**Later:** the engine playing in the browser for `?demo`.
 
 ### 8.6 Instruments from the DX7 (Start from…)
 
@@ -326,3 +326,11 @@ The volca fm generator's 41 instruments (Yamaha's DX7, TX7, TX816 and VRC voices
 - **Six operators to four:** every choice of three or four sounding operators, the modulations among them as they are or through a dropped operator, on every reface algorithm and numbering where the kept ones keep their roles (some modulations may go). A noisy voice also gets the reface's noise built in. Each candidate is played beside the original at C2, C3 and C4: loudness over time and the spectrum in bands of harmonics, frame by frame, as a distance in dB. The three closest are fine-tuned (levels, attack and first decay, feedback); the best is kept.
 - **In the wheel:** an instrument is the base in place of the heaviest pin, in its family's colour; every pin colours it by its own weight (a transform, or a voice of its own at the cost of the base's least important operators). At Wild none it is the original as converted (the output levels levelled); above it the seed moves envelope rates 2–6 steps and modulator levels 1–4, so Variation is heard on an instrument with one original too, and picks among an instrument's originals where it has several; a chosen envelope replaces its own. New voice (and the wheel's centre) rolls fresh pins without the instrument, as on the volca. The name is the instrument's, with the strongest pin's adjective in front when it fits.
 - **Losses** per instrument in docs/SOUND.md, and eleven of them played on the DX against the engine. Next: by ear.
+- **Importing DX7 voices (2026-10-26):** the converter, the DX7 engine and a DX7 .syx reader live in `src/dx7/` (the
+  engine copied from the volca fm generator; MSFA's notice in THIRD_PARTY_NOTICES.md). Import .syx… with a DX7 file
+  (a voice or a bank) opens a window of names: click one to hear it converted on the DX (the Style window's preview,
+  your voice back on closing), tick the ones to keep, Add puts them in the library. No whole banks: you pick. The
+  conversion runs in a worker the quick way (every candidate screened on one short note at 16 kHz, the closest eight
+  heard in full, the best fine-tuned once on levels and feedback): ~2 s a voice in the browser, ~3 s in node, against
+  ~30 s for the full one, and 0.3–0.9 dB further from the original (Yamaha's ROM1A, docs/SOUND.md). Converted voices
+  are levelled like the wheel's and keep the DX7 name.

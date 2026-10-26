@@ -53,6 +53,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         <li><b>On the DX</b> shows the 32 locations as last read; <b>Read all 32</b> reads them all (about 7 s). Click one to select it on the DX.</li>
         <li><b>In this browser</b> keeps voices you collect: the one you edit, the DX’s memory, .syx files you import. Click one to play it on the DX (the whole voice goes over, so sounding notes stop); it is one undo step and nothing is stored until you Store.</li>
         <li><b>Store</b> always means the DX’s memory, <b>Export</b> always means a .syx file on your computer.</li>
+        <li><b>DX7 voices:</b> Import .syx… with a DX7 file (one voice or a 32-voice bank) opens a window with their names. Click one to hear it on the DX, converted to the reface’s four operators (a few seconds the first time; “close”, “fair” or “loose” says how near it came, more on hover). Tick the ones you want and <b>Add</b> them to the library; Cancel or Escape gives the DX your voice back.</li>
       </ul>
 
       <h3>How it was made</h3>

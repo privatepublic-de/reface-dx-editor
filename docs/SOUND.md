@@ -447,3 +447,24 @@ The pianos on the DX (`local/pianos_dx.ts`, each original by the seed that picks
 | AC.PNO 1.1 | −28.1 / −27.9, 5.4 / 5.4 | −31.2 / −30.1, 1.9 / 1.9 |
 | GOOD PIANO | −30.6 / −30.6, 13.4 / 13.5 | −32.5 / −31.8, 2.5 / 2.5 |
 | PianoBo 7 | −28.7 / −29.0, 6.2 / 6.3 | −30.4 / −29.4, 2.5 / 2.4 |
+
+### The quick conversion, for importing (2026-10-26)
+
+Import .syx… converts DX7 voices one at a time while you listen, so the full search (~30 s a voice) is too slow.
+Quick: every candidate is screened on one short note (C3, held 0.6 s, at 16 kHz), the closest eight are heard in
+full, and the best is fine-tuned once on levels and feedback. Six of Yamaha's ROM1A voices, distance (full hearing)
+and time in node:
+
+| Voice | Quick | Full |
+|---|---|---|
+| BRASS 1 | 5.9 dB, 3.8 s | 5.0 dB, 38.5 s |
+| BRASS 2 | 4.0, 3.2 | 3.8, 27.3 |
+| PIANO 1 | 1.9, 3.3 | 1.6, 24.5 |
+| E.PIANO 1 | 3.2, 3.2 | 2.4, 27.0 |
+| BASS 1 | 2.1, 2.8 | 1.6, 28.6 |
+| VIBE 1 | 3.1, 3.4 | 2.6, 30.7 |
+
+Screening with fewer notes at a lower rate first picked other reductions for the brass and the vibraphone; hearing
+the closest eight in full brought back the full search's choice. Fine-tuning at the low rate didn't help. In the
+browser's worker a voice takes about 2 s.
+

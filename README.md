@@ -52,7 +52,9 @@ with GitHub Pages once the repository is on GitHub.
 - **Library:** the DX's 32 locations as last seen (**Read all 32**, about 7 s; click one to select it on the
   DX; export as a bank), and voices kept in this browser (keep, import and export `.syx`, search, rename). A
   click plays a voice on the DX; nothing is stored until you Store. **Store** always means the DX's memory,
-  **Export** always means a `.syx` file.
+  **Export** always means a `.syx` file. **DX7 voices:** importing a DX7 `.syx` (one voice or a 32-voice bank)
+  opens a window with their names: click one to hear it on the DX converted to four operators (a few seconds),
+  tick the ones you want, and they go into the library.
 - **DX settings:** the DX's own settings (MIDI channels, MIDI Control, Local, master tune and transpose,
   tempo, pedal, speakers, auto power-off, contrast), live.
 - **Keyboard:** three octaves to play the DX, soft at the top of a key and hard at the front, and a mod wheel.
@@ -70,7 +72,8 @@ npm run list-voices -- some.syx
 Sound tools (the DX on the X18's inputs 1/2, `npx vite-node tools/<name>.ts`): `dxCurves.ts` measures the DX's
 curves, `engineCurves.ts` puts the probe engine beside them, `voiceProbe.ts` plays whole voices on both.
 `fromDx7.ts` converts the volca fm generator's DX7 instruments for Start from… (it needs that repository beside
-this one).
+this one); the converter itself (`src/dx7/`) also serves the import of DX7 voices. Third-party code:
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The plan and its phases: [PLAN.md](PLAN.md). What the DX does over MIDI, as tested:
 [docs/FINDINGS.md](docs/FINDINGS.md). The chrome (top bar, dialogs, knob gestures) follows the sibling editors

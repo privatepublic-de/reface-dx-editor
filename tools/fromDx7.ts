@@ -5,17 +5,53 @@
 // the volca fm generator beside this repository.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { VC, type Voice as DxVoice } from '../../volca-fm-generator/src/dx7/voice'
-import { renderNote as dxRender } from '../../volca-fm-generator/src/engine/render'
+import { VC, type Voice as DxVoice } from '../src/dx7/voice'
+import { renderDx7Note as dxRender } from '../src/dx7/synth'
 import { INSTRUMENT_IDS, INSTRUMENTS, type InstrumentId } from '../../volca-fm-generator/src/generator/instruments'
 import { renderNote } from '../src/engine/render'
 import { setVoiceName } from '../src/sysex/codec'
-import { convert, HOLD, keyHz, sourceNames, SR, traits, variantsOf } from './dx7Convert'
+import { DEFAULT_CHOICES } from '../../volca-fm-generator/src/generator/choices'
+import { generate } from '../../volca-fm-generator/src/generator/generate'
+import { rng as dxRng } from '../../volca-fm-generator/src/generator/random'
+import { convert, HOLD, keyHz, SR, traits } from '../src/dx7/convert'
+
+const volcaAt = process.env.VOLCA ?? join(process.cwd(), '../volca-fm-generator')
+
 
 const assembleOnly = process.argv[2] === '--assemble'
 const only = assembleOnly ? [] : (process.argv[2]?.split(',') as InstrumentId[] | undefined)
 const dir = join(process.cwd(), 'local/fromDx7')
 mkdirSync(dir, { recursive: true })
+
+// ---------- the sources: the volca's instruments ----------
+
+/** The volca's comments name each original ("after STEINWAY (Original Yamaha/TX7/TX18 #18)"), the recipe's first,
+ *  then its variants', in order. */
+function sourceNames(): Record<string, string[]> {
+  const text = readFileSync(join(volcaAt, 'src/generator/instruments.ts'), 'utf8')
+  const out: Record<string, string[]> = {}
+  let id: string | null = null
+  let pending: string | null = null
+  for (const line of text.split('\n')) {
+    const after = line.match(/^\s*\/\/ after (.*)$/)
+    if (after) { pending = after[1]; continue }
+    const key = line.match(/^  (\w+): \{/)
+    if (key) { id = key[1]; out[id] = [pending ?? 'our own']; pending = null; continue }
+    if (id && /^\s{6}\{\s*$/.test(line)) { out[id].push(pending ?? 'our own'); pending = null; continue }
+    if (!/^\s*\/\//.test(line)) pending = null
+  }
+  return out
+}
+
+/** Each variant of an instrument as the volca plays it at Wild none: the seed whose first draw picks it. */
+function variantsOf(id: InstrumentId): DxVoice[] {
+  const n = 1 + (INSTRUMENTS[id].variants?.length ?? 0)
+  return Array.from({ length: n }, (_, k) => {
+    let seed = 1
+    while (n > 1 && dxRng(seed).int(0, n - 1) !== k) seed++
+    return generate({ ...DEFAULT_CHOICES, instrument: id }, { seed, wild: 0 }).voice
+  })
+}
 
 // ---------- main ----------
 

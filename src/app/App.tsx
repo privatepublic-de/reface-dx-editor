@@ -6,6 +6,8 @@ import { LibraryPanel } from './Library'
 import { useLibrary } from './libraryStore'
 import { SettingsDialog } from './SettingsDialog'
 import { StoreButton } from './StoreButton'
+import { Dx7Import } from './Dx7Import'
+import { useDx7 } from './dx7Store'
 import { InitButton, StyleMenu, StyleSheet } from './StyleMenu'
 import { Panel } from './Panel'
 import { isOnline, useEditor, type Status } from './store'
@@ -29,22 +31,24 @@ export function App() {
   useAltKey()
   useResyncOnFocus()
   const styling = useStyle((s) => !!s.original)
-  useStyleLayout(styling)
+  const importing = useDx7((s) => !!s.file)
+  useStyleLayout(styling || importing)
   return (
     <>
       <ConnectionBar />
-      <main className={styling ? 'main--styling' : undefined}>
+      <main className={styling || importing ? 'main--styling' : undefined}>
         <MainView />
         <Keyboard />
         <LibraryPanel />
       </main>
-      {styling && <div className="style-scrim" aria-hidden="true" />}
+      {(styling || importing) && <div className="style-scrim" aria-hidden="true" />}
       {styling && <StyleSheet />}
+      {importing && <Dx7Import />}
     </>
   )
 }
 
-/** While the Style window is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
+/** While the Style window (or the DX7 import) is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
  *  the bottom and stays playable, and the window sits centred in the room above it (the keyboard's height as a CSS
  *  variable). */
 function useStyleLayout(styling: boolean) {

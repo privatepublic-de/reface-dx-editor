@@ -1,5 +1,5 @@
-// The volca fm generator's Start from instruments (classic DX7 voices, six operators) as reface DX voices (four),
-// PLAN §8.6, docs/SOUND.md "Instruments from the DX7". Both engines are the oracles: the volca's DX7 engine plays the
+// A DX7 voice (six operators) as a reface DX voice (four), PLAN §8.6, docs/SOUND.md "Instruments from the DX7": for
+// Start from… (tools/fromDx7.ts) and Import .syx…. Both engines are the oracles: the DX7 engine (synth.ts) plays the
 // original, the probe engine (measured on the reface) plays each candidate.
 //
 // 1. Every parameter by what it does, not by its number: levels by dB, envelope rates by fitting the curve over
@@ -11,63 +11,24 @@
 //    beside the original at C2, C3 and C4: loudness over time and the spectrum in bands of harmonics, frame by
 //    frame. The closest few are fine-tuned (levels, attack and first decay, feedback), the best is kept.
 //
-// tools/fromDx7.ts runs it over the instruments.
-// Needs the volca fm generator checked out beside this repository; excluded from tsc for that reason.
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { algorithmOf } from '../../volca-fm-generator/src/dx7/algorithms'
-import { OP, opBase, VC, type Voice as DxVoice } from '../../volca-fm-generator/src/dx7/voice'
-import { renderNote as dxRender } from '../../volca-fm-generator/src/engine/render'
+import { algorithmOf } from './algorithms'
+import { OP, opBase, VC, type Voice as DxVoice } from './voice'
+import { renderDx7Note as dxRender } from './synth'
 import {
   AMP_MOD_DEPTH, lfoDelayRates, lfoHz as dxLfoHz, PITCH_LEVEL, PITCH_MOD_SENS, PITCH_RATE, PITCH_RATE_UNIT, scaleLevel, scaleOutLevel, scaleVelocity,
-} from '../../volca-fm-generator/src/engine/tables'
-import { DEFAULT_CHOICES } from '../../volca-fm-generator/src/generator/choices'
-import { generate } from '../../volca-fm-generator/src/generator/generate'
-import { INSTRUMENTS, type InstrumentId } from '../../volca-fm-generator/src/generator/instruments'
-import { rng as dxRng } from '../../volca-fm-generator/src/generator/random'
-import { attackTime, centroid, decayTime, envelope, flatness, slice, spectrum, toDb } from '../src/engine/measure'
-import { renderNote } from '../src/engine/render'
-import { envelopeDb } from '../src/engine/synth'
-import { ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, egLevelDb, kscDb, releaseDbPerS, levelDb, lfoDelayS, lfoHz, pitchEgSemitonesPerS, pitchModSemitones, velocityDb } from '../src/engine/tables'
-import { ALGORITHMS } from '../src/params/algorithms'
-import { fixedBytes, ratioBytes } from '../src/params/display'
-import { initVoice } from '../src/params/init'
-import { cloneVoice, type Voice } from '../src/sysex/codec'
+} from './tables'
+import { attackTime, centroid, decayTime, envelope, flatness, slice, spectrum, toDb } from '../engine/measure'
+import { renderNote } from '../engine/render'
+import { envelopeDb } from '../engine/synth'
+import { ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, egLevelDb, kscDb, releaseDbPerS, levelDb, lfoDelayS, lfoHz, pitchEgSemitonesPerS, pitchModSemitones, velocityDb } from '../engine/tables'
+import { ALGORITHMS } from '../params/algorithms'
+import { fixedBytes, ratioBytes } from '../params/display'
+import { initVoice } from '../params/init'
+import { cloneVoice, type Voice } from '../sysex/codec'
 
-export const volcaAt = process.env.VOLCA ?? join(process.cwd(), '../volca-fm-generator')
 
 const DB_PER_UNIT = 6.0206 / 256
 export const SR = 48000
-
-// ---------- the sources ----------
-
-/** The volca's comments name each original ("after STEINWAY (Original Yamaha/TX7/TX18 #18)"), the recipe's first,
- *  then its variants', in order. */
-export function sourceNames(): Record<string, string[]> {
-  const text = readFileSync(join(volcaAt, 'src/generator/instruments.ts'), 'utf8')
-  const out: Record<string, string[]> = {}
-  let id: string | null = null
-  let pending: string | null = null
-  for (const line of text.split('\n')) {
-    const after = line.match(/^\s*\/\/ after (.*)$/)
-    if (after) { pending = after[1]; continue }
-    const key = line.match(/^  (\w+): \{/)
-    if (key) { id = key[1]; out[id] = [pending ?? 'our own']; pending = null; continue }
-    if (id && /^\s{6}\{\s*$/.test(line)) { out[id].push(pending ?? 'our own'); pending = null; continue }
-    if (!/^\s*\/\//.test(line)) pending = null
-  }
-  return out
-}
-
-/** Each variant of an instrument as the volca plays it at Wild none: the seed whose first draw picks it. */
-export function variantsOf(id: InstrumentId): DxVoice[] {
-  const n = 1 + (INSTRUMENTS[id].variants?.length ?? 0)
-  return Array.from({ length: n }, (_, k) => {
-    let seed = 1
-    while (n > 1 && dxRng(seed).int(0, n - 1) !== k) seed++
-    return generate({ ...DEFAULT_CHOICES, instrument: id }, { seed, wild: 0 }).voice
-  })
-}
 
 export const op = (v: DxVoice, n: number, p: keyof typeof OP) => v[opBase(n) + OP[p]]
 
@@ -634,22 +595,33 @@ function noiseRebuilt(v: DxVoice, ops: Map<number, Uint8Array>, common: Voice['c
 
 // ---------- comparing sounds ----------
 
-export const NOTES = [48, 60, 72]
-export const HOLD = 1.0
-const RELEASE = 0.4
-export const FRAMES = [0.005, 0.03, 0.08, 0.2, 0.5, 0.95, 1.08, 1.25]
-const FRAME = 2048
+/** How a candidate is played beside the original: the notes, how long held and released, at what sample rate, in
+ *  frames how long. */
+export interface Hearing { sampleRate: number; notes: number[]; hold: number; release: number; frame: number }
+/** The full comparison (Start from…): C2, C3, C4, held 1 s. */
+export const FULL: Hearing = { sampleRate: 48000, notes: [48, 60, 72], hold: 1, release: 0.4, frame: 2048 }
+/** A first look for the import: one short note at a low rate, to find the few worth hearing in full. */
+const SCREEN: Hearing = { sampleRate: 16000, notes: [60], hold: 0.6, release: 0.3, frame: 512 }
+/** The import's comparison: two notes, at half the rate. */
+const QUICK: Hearing = { sampleRate: 24000, notes: [48, 72], hold: 0.8, release: 0.3, frame: 1024 }
+
+export const NOTES = FULL.notes
+export const HOLD = FULL.hold
+/** Eight moments: in the attack, while held (half way, near the end) and in the release. */
+const framesOf = (h: Hearing) => [0.005, 0.03, 0.08, 0.2, 0.5 * h.hold, 0.95 * h.hold, h.hold + 0.08, h.hold + 0.25]
+export const FRAMES = framesOf(FULL)
 const BANDS = [0.75, 1.5, 2.5, 4.5, 8.5, 16.5, 32.5, 1e9]
 
 export interface Print { loud: number[]; bands: number[][] }
 
-export function fingerprint(samples: Float32Array, hz: number): Print {
-  const env = envelope({ samples, sampleRate: SR }, FRAME / SR / 4)
+export function fingerprint(samples: Float32Array, hz: number, h: Hearing = FULL): Print {
+  const sampleRate = h.sampleRate
+  const env = envelope({ samples, sampleRate }, h.frame / sampleRate / 4)
   const top = Math.max(...env, 1e-12)
   const loud: number[] = []
   const bands: number[][] = []
-  for (const t of FRAMES) {
-    const seg = slice({ samples, sampleRate: SR }, t, t + FRAME / SR)
+  for (const t of framesOf(h)) {
+    const seg = slice({ samples, sampleRate }, t, t + h.frame / sampleRate)
     let s = 0
     for (const x of seg.samples) s += x * x
     // below −30 dB a difference is hardly heard
@@ -669,24 +641,32 @@ export function fingerprint(samples: Float32Array, hz: number): Print {
 /** dB: loudness over time and the share of each band of harmonics, frame by frame, averaged. */
 export function distance(a: Print, b: Print): number {
   let d = 0
-  for (let f = 0; f < FRAMES.length; f++) {
+  for (let f = 0; f < a.loud.length; f++) {
     d += Math.abs(a.loud[f] - b.loud[f])
     // the spectrum only where it's heard
     if (Math.max(a.loud[f], b.loud[f]) > -29) d += a.bands[f].reduce((s, x, i) => s + Math.abs(x - b.bands[f][i]), 0) / a.bands[f].length
   }
-  return d / FRAMES.length
+  return d / a.loud.length
 }
 
 export const keyHz = (note: number, transpose: number) => 440 * 2 ** ((note + transpose - 69) / 12)
-export const dxPrints = (v: DxVoice) => NOTES.map((n) => fingerprint(dxRender(v, { note: n, holdSeconds: HOLD, releaseSeconds: RELEASE, sampleRate: SR }), keyHz(n, v[VC.transpose] - 24)))
-export const rfPrints = (v: Voice) => NOTES.map((n) => fingerprint(renderNote(v, { note: n, holdSeconds: HOLD, releaseSeconds: RELEASE, sampleRate: SR }), keyHz(n, v.common[0x0c] - 0x40)))
-export const score = (want: Print[], v: Voice) => rfPrints(v).reduce((s, p, i) => s + distance(want[i], p), 0) / NOTES.length
+export const dxPrints = (v: DxVoice, h: Hearing = FULL) =>
+  h.notes.map((n) => fingerprint(dxRender(v, { note: n, holdSeconds: h.hold, releaseSeconds: h.release, sampleRate: h.sampleRate }), keyHz(n, v[VC.transpose] - 24), h))
+export const rfPrints = (v: Voice, h: Hearing = FULL) =>
+  h.notes.map((n) => fingerprint(renderNote(v, { note: n, holdSeconds: h.hold, releaseSeconds: h.release, sampleRate: h.sampleRate }), keyHz(n, v.common[0x0c] - 0x40), h))
+export const score = (want: Print[], v: Voice, h: Hearing = FULL) => rfPrints(v, h).reduce((s, p, i) => s + distance(want[i], p), 0) / h.notes.length
 
 // ---------- one voice ----------
 
 export interface Converted { voice: Voice; describe: string; score: number }
 
-export function convert(v: DxVoice): Converted {
+export interface ConvertOptions {
+  /** for the import: every candidate screened on one short note, the closest six heard on two at half the rate, the
+   *  best fine-tuned once (a few seconds a voice instead of half a minute) */
+  fast?: boolean
+}
+
+export function convert(v: DxVoice, { fast = false }: ConvertOptions = {}): Converted {
   const ops = new Map<number, Uint8Array>()
   for (let n = 1; n <= 6; n++) if (op(v, n, 'outputLevel') > 0) ops.set(n, translateOp(v, n))
   const common = initVoice().common
@@ -700,35 +680,44 @@ export function convert(v: DxVoice): Converted {
     const peak = Math.max(...[1, 2, 3].map((i) => dxEgDb(op(v, fbOp, `level${i}` as 'level1'))))
     feedback.set(fbOp, feedbackFor(v[VC.feedback], dxLevelAt(v, fbOp, 60) + peak))
   }
-  const want = dxPrints(v)
+  const hearing = FULL
+  const first = fast ? SCREEN : FULL
+  const wantFirst = dxPrints(v, first)
   const rebuilt = feedback.get(fbOp)?.square ? noiseRebuilt(v, ops, common, use) : []
   // the same shape in another numbering sounds the same: once each
   const seen = new Set<string>()
-  const all = sources(v, ops).flatMap((src) => candidates(src).map((c) => ({ c, src }))).flatMap(({ c, src }) => {
+  let all = sources(v, ops).flatMap((src) => candidates(src).map((c) => ({ c, src }))).flatMap(({ c, src }) => {
     const A = ALGORITHMS[c.algorithm]
     const dxAt = new Map([...c.place].map(([n, s]) => [s, n]))
     const key = src.describe + [...c.place].map(([n, s]) => `${n}${A.carriers.includes(s) ? 'c' : ''}<${A.modulations.filter(([f, t]) => t === s && dxAt.has(f)).map(([f]) => dxAt.get(f)).sort()}`).sort().join('|')
     if (seen.has(key)) return []
     seen.add(key)
     const voice = build(v, c, src.ops, common, use, feedback)
-    return [{ voice, describe: c.describe, score: score(want, voice) }]
-  }).concat(rebuilt.map((r) => ({ ...r, score: score(want, r.voice) })))
+    return [{ voice, describe: c.describe, score: score(wantFirst, voice, first) }]
+  }).concat(rebuilt.map((r) => ({ ...r, score: score(wantFirst, r.voice, first) })))
   all.sort((x, y) => x.score - y.score)
-  if (process.env.DX_DEBUG) for (const c of all.slice(0, 8)) console.error(`  ${c.score.toFixed(2)} alg ${c.voice.common[0x10] + 1} ${c.describe}`)
+  const want = fast ? dxPrints(v, hearing) : wantFirst
+  if (fast) {
+    all = all.slice(0, 8).map((c) => ({ ...c, score: score(want, c.voice, hearing) }))
+    all.sort((x, y) => x.score - y.score)
+  }
+  if (typeof process !== 'undefined' && process.env?.DX_DEBUG) for (const c of all.slice(0, 8)) console.error(`  ${c.score.toFixed(2)} alg ${c.voice.common[0x10] + 1} ${c.describe}`)
   // fine-tune the closest few: each operator's level, its attack and first decay, then the feedback
-  const tuned = all.slice(0, 3).map((c) => {
+  const tuned = all.slice(0, fast ? 1 : 3).map((c) => {
     const voice = cloneVoice(c.voice)
     let best = c.score
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < (fast ? 1 : 2); pass++) {
       for (let s = 0; s < 4; s++) {
         if (!voice.ops[s][0x12]) continue
         // an instant attack stays instant: the comparison's frames are too long to hear the first 10 ms
-        const tries = [[0x12, [-8, -4, -2, 2, 4, 8]], [0x01, voice.ops[s][0x01] >= 120 ? [] : [-16, -8, -4, 4, 8, 16]], [0x02, [-8, -4, 4, 8]], [0x13, voice.ops[s][0x13] ? [-24, -12, -6, 6, 12, 24] : []]] as const
+        const tries = fast
+          ? [[0x12, [-8, -4, 4, 8]], [0x13, voice.ops[s][0x13] ? [-12, 12] : []]] as const
+          : [[0x12, [-8, -4, -2, 2, 4, 8]], [0x01, voice.ops[s][0x01] >= 120 ? [] : [-16, -8, -4, 4, 8, 16]], [0x02, [-8, -4, 4, 8]], [0x13, voice.ops[s][0x13] ? [-24, -12, -6, 6, 12, 24] : []]] as const
         for (const [byte, steps] of tries) {
           for (const d of steps) {
             const was = voice.ops[s][byte]
             voice.ops[s][byte] = Math.max(byte === 0x12 ? 1 : 0, Math.min(byte === 0x02 && voice.ops[s][0x06] < voice.ops[s][0x05] ? FIRST_FALL_MAX : 127, was + d))
-            const e = score(want, voice)
+            const e = score(want, voice, hearing)
             if (e < best - 1e-4) best = e
             else voice.ops[s][byte] = was
           }
@@ -737,7 +726,7 @@ export function convert(v: DxVoice): Converted {
     }
     return { voice, describe: c.describe, score: best }
   })
-  return tuned.reduce((x, y) => (y.score < x.score ? y : x))
+  return [...tuned, all[0]].reduce((x, y) => (y.score < x.score ? y : x))
 }
 
 // ---------- traits, for the table ----------
@@ -747,8 +736,8 @@ export function traits(samples: Float32Array, hz: number) {
   return {
     attack: attackTime(seg),
     decay: decayTime(slice(seg, 0, HOLD)),
-    early: centroid(slice(seg, 0.02, 0.02 + FRAME / SR)) / hz,
-    body: centroid(slice(seg, 0.5, 0.5 + FRAME / SR)) / hz,
+    early: centroid(slice(seg, 0.02, 0.02 + FULL.frame / SR)) / hz,
+    body: centroid(slice(seg, 0.5, 0.5 + FULL.frame / SR)) / hz,
   }
 }
 

@@ -526,3 +526,22 @@ button.link { background: none; border: none; padding: 0 4px; color: var(--ink-d
   .style-sheet { top: 0; bottom: var(--keys-h, 0px); width: 100vw; height: auto; max-height: none; border-radius: 0; border-width: 0 0 2px; }
 }
 
+/* ---------- the DX7 import window (Dx7Import.tsx), in the Style window's frame ---------- */
+.dx7-import__hint { margin: 0; font-size: 13px; }
+.dx7-import__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; }
+.dx7-import__voice { display: grid; grid-template-columns: auto minmax(0, 1fr) 5.5em; align-items: center; gap: 4px; border-radius: 6px; padding: 0 4px; }
+.dx7-import__voice.on { background: #ffffff12; }
+.dx7-import__voice button { display: flex; gap: 8px; align-items: baseline; min-width: 0; padding: 3px 6px; border-color: transparent; background: none; text-align: left; }
+.dx7-import__voice button:hover:not(:disabled) { background: #ffffff10; }
+.dx7-import__voice.on button { color: var(--screen-ink); }
+.dx7-import__num { width: 1.6em; text-align: right; font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.dx7-import__name { font: 500 15px var(--font-narrow); letter-spacing: .04em; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.dx7-import__state { font-size: 12px; text-align: right; }
+.dx7-import__state.error { color: #e88; }
+@media (min-width: 1000px) {
+  .dx7-import .style-sheet__body { grid-template-columns: minmax(0, 1fr); }
+  .dx7-import__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .dx7-import__list { grid-template-columns: minmax(0, 1fr); }
+}

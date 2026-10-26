@@ -4,7 +4,8 @@
 // tune on the DX: change the numbers here, not the code.
 // The reface's own scale (docs/SOUND.md): a modulator at 1 : 1 adds a touch at ~50, clearly at ~65, strongly at ~75,
 // and from 80 the harmonics outgrow the fundamental. Every operator has feedback: saw for all harmonics, square for
-// odd ones; the wave alone is never noise (docs/SOUND.md), noise comes from such waves modulating deep. Where a style family (style/templates.ts) matched, its tuned numbers are taken.
+// odd ones; the wave alone is never noise (docs/SOUND.md), noise comes from such waves modulating deep.
+// Where a style family (the former style/templates.ts) matched, its tuned numbers are taken.
 // Operators are 0-based (0 = OP1), algorithms 1–12 as the DX numbers them.
 import { ALGORITHMS } from '../params/algorithms'
 import { fixedBytes, ratioBytes } from '../params/display'

@@ -1,7 +1,12 @@
 # How the reface DX sounds, measured
 
 Recorded from the DX's line out (X18 inputs 1/2, 48 kHz) by `tools/dxCurves.ts` and `tools/styleProbe.ts`, 2026-10-23.
-The style templates (`src/style/`) are tuned to these curves. Re-run the tools after changing them.
+The style templates were tuned to these curves; the tonality wheel (`src/wheel/`, PLAN §8) took over their numbers and
+the measured transforms left in `src/style/`. Re-run `tools/dxCurves.ts` after changing them.
+
+The family/character style editor and its probes (`tools/styleProbe.ts`, `tools/styleCompare.ts`, `tools/noiseProbe.ts`)
+were removed on 2026-10-26, when the wheel replaced it. Their sections below stay as the record of what was measured;
+the commands in them no longer run.
 
 ## Envelope rates
 
@@ -42,6 +47,8 @@ That's why the brightness and character steps are small (±15–20 levels).
 
 ## Style probe
 
+*Removed with the style editor (see the top); kept as history.*
+
 `npx vite-node tools/styleProbe.ts [families brightness characters shapes length]` plays each style and measures it:
 
 - the peak level
@@ -75,6 +82,8 @@ The first tuning (from feel, before measuring) failed these:
 The fix was the curves above. Still to do: tune by ear. These numbers say each style moves in the right direction, not that it sounds good.
 
 ## How different the options are (`tools/styleCompare.ts`)
+
+*Removed with the style editor (see the top); kept as history.*
 
 Each take gets a fingerprint:
 
@@ -134,6 +143,8 @@ A distance is the mean dB difference between two fingerprints, for the spectrum 
 Brightness −1 is still small on bass, pluck and e-piano. They're close to a sine at 0, so there's little left to take away.
 
 ### FM noise, noisier (`tools/noiseProbe.ts`)
+
+*Removed with the style editor (see the top); kept as history. The noise family's numbers live on in the wheel's Noise tonality.*
 
 Spectral flatness is the geometric mean of the power spectrum over its arithmetic mean, from 200 Hz to 12 kHz. 1 is white noise; near 0 means a few clear partials.
 

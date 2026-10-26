@@ -122,14 +122,16 @@ function shapeSkeleton(v: Voice, c: WheelChoices, dominant: MixPart, rng: Rng, s
   applyIntensity(v, dominant.intensity)
 }
 
-/** An instrument as the base: the original as converted, its envelopes replaced only by a chosen shape. Wild moves
- *  its envelope rates apart, up to 6 steps (at none it is the original). In place. */
+/** An instrument as the base: the original as converted, its envelopes replaced only by a chosen shape. Above Wild
+ *  none the seed moves it a little, so Variation is heard even on an instrument with one original: envelope rates
+ *  up to 2–6 steps, modulator levels up to 1–4 (at none it is the original). In place. */
 function startFromInstrument(v: Voice, c: WheelChoices, rng: Rng, spread: number) {
+  const wild = (spread - 0.3) / 0.7
   if (c.shape) applyShape(v, c.shape, rng, spread)
-  else {
-    const by = (6 * (spread - 0.3)) / 0.7
-    for (const o of v.ops) for (let i = 0x01; i <= 0x04; i++) if (o[i] < 127) o[i] = clamp(o[i] + Math.round((rng.next() * 2 - 1) * by))
+  else if (wild > 0) {
+    for (const o of v.ops) for (let i = 0x01; i <= 0x04; i++) if (o[i] < 127) o[i] = clamp(o[i] + Math.round((rng.next() * 2 - 1) * (2 + 4 * wild)))
   }
+  if (wild > 0) for (const op of rolesOf(v).modulators) if (!isNoiseOp(v, op)) setLevel(v, op, level(v, op) + Math.round((rng.next() * 2 - 1) * (1 + 3 * wild)))
   if (c.length) applyLength(v, c.length)
 }
 

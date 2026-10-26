@@ -361,6 +361,13 @@ describe('instruments to start from (converted from the DX7, tools/fromDx7.ts)',
     expect(algorithms.size).toBe(INSTRUMENTS[id].variants.length)
   })
 
+  it('above Wild none another seed moves even a one-original instrument: rates and modulator levels a few steps', () => {
+    const bytes = (seed: number) => start('trumpet', [], seed, 0.1).voice.ops.flatMap((o) => [...o])
+    const [a, b] = [bytes(1), bytes(2)]
+    expect(a.filter((x, i) => x !== b[i]).length).toBeGreaterThan(6)
+    expect(Math.max(...a.map((x, i) => Math.abs(x - b[i])))).toBeLessThanOrEqual(6)
+  })
+
   it('pins colour it: light as a transform, heavy as a voice of their own; the name gets the adjective', () => {
     const light = start('epiano', [pin('glass', 0.5, 0.15)])
     expect(light.roles.map((r) => r.as)).toEqual(['skeleton', 'transform'])

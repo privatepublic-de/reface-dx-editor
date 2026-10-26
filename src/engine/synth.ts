@@ -215,6 +215,7 @@ class Note {
   readonly ops: OpState[]
   readonly pitchEnv: PitchEnv
   private carriers: readonly number[] = [0]
+  private isCarrier = [true, false, false, false]
   private modulators: number[][] = [[], [], [], []]
   private pmdSemitones = 0
   /** the feedback's low-pass per sample, FEEDBACK_SMOOTHING at 48 kHz */
@@ -244,6 +245,7 @@ class Note {
     this.active = true
     const algorithm = ALGORITHMS[v.common[0x10]] ?? ALGORITHMS[0]
     this.carriers = algorithm.carriers
+    this.isCarrier = [0, 1, 2, 3].map((op) => algorithm.carriers.includes(op))
     this.modulators = [0, 1, 2, 3].map((op) => algorithm.modulations.filter(([, to]) => to === op).map(([from]) => from))
     const keyHz = 440 * 2 ** ((note - 69) / 12)
     v.ops.forEach((o, i) => {
@@ -281,9 +283,10 @@ class Note {
     for (let i = 3; i >= 0; i--) {
       const s = this.ops[i]
       const db = s.env.next() + s.offsetDb
-      // heard: up within RISE_S, down at once
+      // heard: a carrier up within RISE_S, down at once; a modulator's depth follows its envelope (measured: a
+      // modulator at R1 127 is as bright in the first 5 ms as later)
       const level = db <= SILENT_DB ? 0 : 10 ** (db / 20)
-      s.heard = level > s.heard ? s.heard + (level - s.heard) * this.rise : level
+      s.heard = level > s.heard && this.isCarrier[i] ? s.heard + (level - s.heard) * this.rise : level
       const semis = (s.pmd ? vibrato : 0) + (s.peg ? peg : 0)
       s.phase += (s.hz * (semis ? 2 ** (semis / 12) : 1)) / this.sampleRate
       s.phase -= Math.floor(s.phase)

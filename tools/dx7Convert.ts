@@ -134,6 +134,8 @@ export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: n
 /** The fastest first decay after an attack whose peak the DX plays reliably (docs/SOUND.md "Right after the attack":
  *  up to 80 every take loses 2–3 dB; above, a take loses either a little or a lot, by where the key-on falls). */
 const FIRST_FALL_MAX = 80
+/** A modulator that gets to its top this fast on the DX7 is a hammer or a pick: its attack by when it arrives. */
+const FAST_ARRIVAL_S = 0.03
 export const EG_STEP = 0.005
 export const EG_HOLD = 3
 export const EG_TOTAL = 5
@@ -348,12 +350,14 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
   const egOnly = dxEnvelopeDb(dxRates, dxLevels, outUnits, dxQrateBoost(60, at('rateScaling')), EG_HOLD, EG_TOTAL, EG_STEP, stages)
   // the attack by when it gets to the top: the DX7 climbs evenly in dB, the reface rushes and slows into the top, so
   // the curves can't meet early; the time they arrive can
-  // a modulator's early level is brightness: there the curve itself matters more than when it arrives
+  // a modulator's early level is brightness: in a slow swell the curve itself matters more than when it arrives (the
+  // reface's rush would brighten it early); a fast one (a hammer) by when it arrives, as a carrier
   const carrier = algorithmOf(v[VC.algorithm]).carriers.includes(n)
   let r1 = Math.round((dxRates[0] * 127) / 99)
-  if (carrier && dxLevels[0] > 0) {
-    const arrive = (curve: number[], db: number) => curve.findIndex((x) => x >= db - 1)
-    const want = arrive(egOnly, dxEgDb(dxLevels[0]))
+  const arrive = (curve: number[], db: number) => curve.findIndex((x) => x >= db - 1)
+  const want = dxLevels[0] > 0 ? arrive(egOnly, dxEgDb(dxLevels[0])) : -1
+  const byArrival = dxLevels[0] > 0 && (carrier || (want >= 0 && want * EG_STEP <= FAST_ARRIVAL_S))
+  if (byArrival) {
     // the fastest of equally good rates: they differ once rate scaling speeds them up
     const err = (r: number) => {
       const got = arrive(envelopeDb([r, 127, 127, 127], [levels[0], levels[0], levels[0], 0], EG_HOLD, EG_HOLD, EG_STEP), egLevelDb(levels[0]))
@@ -367,7 +371,7 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
     { curve: egOnly, hold: EG_HOLD, total: EG_TOTAL },
     { curve: dxEnvelopeDb(dxRates, dxLevels, outUnits, boost, 0.3, 2.3, EG_STEP), hold: 0.3, total: 2.3 },
   ]
-  const free = carrier ? [1, 2, 3] : [0, 1, 2, 3]
+  const free = byArrival ? [1, 2, 3] : [0, 1, 2, 3]
   const scaled = [r1, ...dxRates.slice(1).map((r) => Math.round((r * 127) / 99))]
   // the release's speed from the short hold: how fast the DX7 falls 30 dB from where it is when the key goes
   const short = targets[1].curve
@@ -718,7 +722,8 @@ export function convert(v: DxVoice): Converted {
     for (let pass = 0; pass < 2; pass++) {
       for (let s = 0; s < 4; s++) {
         if (!voice.ops[s][0x12]) continue
-        const tries = [[0x12, [-8, -4, -2, 2, 4, 8]], [0x01, [-16, -8, -4, 4, 8, 16]], [0x02, [-8, -4, 4, 8]], [0x13, voice.ops[s][0x13] ? [-24, -12, -6, 6, 12, 24] : []]] as const
+        // an instant attack stays instant: the comparison's frames are too long to hear the first 10 ms
+        const tries = [[0x12, [-8, -4, -2, 2, 4, 8]], [0x01, voice.ops[s][0x01] >= 120 ? [] : [-16, -8, -4, 4, 8, 16]], [0x02, [-8, -4, 4, 8]], [0x13, voice.ops[s][0x13] ? [-24, -12, -6, 6, 12, 24] : []]] as const
         for (const [byte, steps] of tries) {
           for (const d of steps) {
             const was = voice.ops[s][byte]

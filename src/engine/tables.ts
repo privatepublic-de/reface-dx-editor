@@ -58,7 +58,7 @@ function interpolate(table: readonly number[], rate: number): number {
   return Math.exp(Math.log(table[i]) * (1 - f) + Math.log(table[i + 1]) * f)
 }
 
-/** An operator's level follows its envelope up with this time constant, down at once (measured 2026-10-26,
+/** A carrier's level follows its envelope up with this time constant, down at once; a modulator's doesn't (measured 2026-10-26,
  *  local fastdecay takes): no note gets louder faster than ~21 ms to 90 %, and a fast first decay starts before
  *  the rise is done, so it takes the peak down (R2 60: −1.6 dB, 80: −3.3, 95: −6); with L2 at 64 the note rises
  *  straight to L2. */

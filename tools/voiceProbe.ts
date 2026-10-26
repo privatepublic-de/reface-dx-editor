@@ -2,7 +2,7 @@
 // shaped waves (feedback), every tonality from one pin, and noise grafted at several levels. Each is played on the
 // DX and rendered by the engine and measured the same way: loudness, brightness (spectral centroid in harmonics of
 // the note), noisiness (flatness) and the envelope. Usage: npx vite-node tools/voiceProbe.ts [--engine] [group…]
-// Groups: shaped tonalities noise. --engine renders only (no DX); --compare renders the voices the DX played (the
+// Groups: shaped tonalities noise mixes. --engine renders only (no DX); --compare renders the voices the DX played (the
 // .syx beside each take) against its logged measures, without the DX. Appends the DX's to local/takes/voices.jsonl.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { renderNote } from '../src/engine/render'
@@ -20,7 +20,7 @@ const groups = args.filter((a) => !a.startsWith('--'))
 
 const r1 = (x: number) => Math.round(x * 10) / 10
 const fmt = (m: ReturnType<typeof measure>) =>
-  `${r1(m.db).toString().padStart(6)} dB  ${m.centroidH.toFixed(2).padStart(6)} H  flat ${m.flatness.toFixed(3)}  env ${m.env.map((e) => r1(e).toString().padStart(5)).join(' ')}`
+  `${r1(m.db).toString().padStart(6)} dB  peak ${r1(m.peakDb).toString().padStart(6)}  ${m.centroidH.toFixed(2).padStart(6)} H  flat ${m.flatness.toFixed(3)}  env ${m.env.map((e) => r1(e).toString().padStart(5)).join(' ')}`
 
 const dx = engineOnly || compare ? null : await (await import('./dxTake')).openDx()
 // the engine at the DX's recording level: by the first take's loudness against its render
@@ -36,6 +36,7 @@ try {
       const r = measure(Float64Array.from(renderNote(played, { note: p.note, holdSeconds: p.holdS, releaseSeconds: 0.3, sampleRate: RATE })), p.note)
       offset ??= logged.dx.db - r.db
       r.db += offset
+      r.peakDb += offset
       console.log(`${p.label.padEnd(26)} DX     ${fmt(logged.dx)}\n${''.padEnd(26)} engine ${fmt(r)}`)
       continue
     }
@@ -47,6 +48,7 @@ try {
     const m = measure(x, p.note)
     offset ??= m.db - e.db
     e.db += offset
+    e.peakDb += offset
     console.log(`${p.label.padEnd(26)} DX     ${fmt(m)}\n${''.padEnd(26)} engine ${fmt(e)}`)
     appendFileSync(LOG, JSON.stringify({ group: p.group, label: p.label, note: p.note, dx: m, engine: e }) + '\n')
   }

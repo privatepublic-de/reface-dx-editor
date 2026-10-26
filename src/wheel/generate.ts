@@ -2,9 +2,9 @@
 // builds the skeleton and its distance from the centre deepens or softens it; then the envelope shape. Every other
 // pin comes in by its share of the heaviest one's weight: light, it colours the base (a transform); from a quarter, a
 // voice of its own (a pair, or one operator whose feedback carries it) or, up to 60 % for the tonalities that have
-// one, a modulator grafted into the base's carrier: a hybrid rather than a layer. Loudness and audibility come once
-// the DX's level and feedback curves are recorded (docs/SOUND.md), so nothing here renders the voice yet.
-import { isCarrier } from '../params/algorithms'
+// one, a modulator grafted into the base's carrier: a hybrid rather than a layer. Last, the voice is made audible
+// and as loud as every other, measured with the probe engine (loudness.ts).
+import { ALGORITHMS, isCarrier } from '../params/algorithms'
 import { ratioOf } from '../params/display'
 import { setVoiceName, type Voice } from '../sysex/codec'
 import { rng as makeRng, type Rng } from '../style/random'
@@ -12,6 +12,7 @@ import { applyShape, applyTransients, type Envelope } from '../style/shapes'
 import { applyLength, rolesOf } from '../style/transforms'
 import { mixOf, TONALITIES, type MixPart, type Tonality, type WheelChoices } from './choices'
 import { applyLayout, byImportance, findLayout, type Layout, type Need } from './layout'
+import { ensureAudible, levelLoudness, rescue, SILENT_DB } from './loudness'
 import { applyOpSpec, buildSkeleton, fastOps, TONALITY_DEFS, type OpSpec } from './tonalities'
 import { clamp, isNoiseOp, level, ratio, roles as rolesNow, setLevel, setRatio, sounding, transientBy, TRANSFORMS } from './transforms'
 
@@ -33,6 +34,8 @@ export interface WheelVoice {
   roles: { tonality: Tonality; as: PinRole }[]
   /** the tonality each operator (0–3) belongs to, null for a silent one: for drawing */
   opTonality: (Tonality | null)[]
+  /** the loudest 20 ms of a held C4 in the probe engine, dB (loudness.ts TARGET_DB when levelled) */
+  loudness: number
 }
 
 /** How far a voice strays from its skeleton at wild 0 and 1. */
@@ -79,10 +82,17 @@ export function generateWheel(c: WheelChoices, { seed, wild = 0 }: WheelOptions)
       roles.push({ tonality: part.tonality, as: 'transform' })
     }
   }
-  for (let op = 0; op < 4; op++) if (!sounding(v, op)) opTonality[op] = null
+  // heard, and as loud as the others
+  ensureAudible(v)
+  let loudness = levelLoudness(v)
+  if (loudness < SILENT_DB) {
+    rescue(v, ALGORITHMS[v.common[0x10]].carriers[0])
+    loudness = levelLoudness(v)
+  }
+  for (let op = 0; op < 4; op++) opTonality[op] = sounding(v, op) ? (opTonality[op] ?? dominant.tonality) : null
 
   setVoiceName(v, wheelName(mix))
-  return { voice: v, mix, roles, opTonality }
+  return { voice: v, mix, roles, opTonality, loudness }
 }
 
 /** The tonalities as the layout renumbers the operators. */

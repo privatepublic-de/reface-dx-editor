@@ -189,3 +189,15 @@ flatness of 0.81 on the DX (0.75 in the engine); a square modulator grafted into
 String is twice as bright in the engine (centroid 9.0 against 4.6 harmonics), FM noise ~5 dB quieter, a saw
 modulator at 110 9 dB louder, and the DX's release after key-off at rate 127 isn't instant (−15 … −60 dB 100 ms
 later, depending on the voice). Still estimates: keyboard and rate scaling, detune, LFO, pitch EG rates, AMD.
+
+## Loudness levelling (PLAN §8.4)
+
+`src/wheel/loudness.ts` renders every voice from the wheel (a held C4 at velocity 100, slow rates made quick, the
+loudest 20 ms) and moves all its carriers by the same steps (0.375 dB each, kept between 32 and 127) to a full-level
+sine minus 10 dB; a voice still not heard gets its first carrier at full level. Before levelling the wheel's voices
+came out 0–12 dB below that sine in the engine; the four-carrier organ can only just reach the target, since the DX
+divides by the carriers.
+
+On the DX (`tools/voiceProbe.ts tonalities mixes`, 2026-10-26, the loudest 20 ms): the 12 tonalities and 6 two-pin
+mixes from −28.6 to −31.8 dB, a spread of 3.2 dB (before: about 10 dB). FM noise is the exception at −26.2 dB: the
+engine makes it ~4 dB quieter than the DX does (its flatness is lower too, 0.51 against 0.71).

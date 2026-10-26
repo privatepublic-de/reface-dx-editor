@@ -52,10 +52,14 @@ export function probes(groups: readonly string[] = []): Probe[] {
     }
     out.push({ group: 'noise', label: 'noise alone', voice: wheel([['noise', 1]], 'gate').voice, note: 48, holdS: 0.8 })
   }
+  if (want('mixes')) for (const [a, b, w] of [['bell', 'warm', 0.5], ['tine', 'reed', 0.8], ['organ', 'breath', 0.5], ['metallic', 'noise', 0.4], ['string', 'glass', 0.4], ['wooden', 'bell', 0.4]] as [Tonality, Tonality, number][]) {
+    out.push({ group: 'mixes', label: `${a} + ${b} ${w}`, voice: wheel([[a, 1], [b, w]]).voice, note: 60, holdS: 1.2 })
+  }
   return out
 }
 
-/** Measured from the onset: loudness, brightness and noisiness 50–450 ms in, the envelope at four times. */
+/** Measured from the onset: loudness, brightness and noisiness 50–450 ms in, the envelope at four times, and the
+ *  loudest 20 ms (`peakDb`, what the wheel's levelling aims at). */
 export function measure(x: Float64Array, note: number) {
   const env = envelope(x, 0.005)
   const top = Math.max(...env)
@@ -78,8 +82,10 @@ export function measure(x: Float64Array, note: number) {
     n++
   })
   const at = (s: number) => db(rms(x, on + s * RATE, on + (s + 0.05) * RATE) / (top + 1e-12))
+  const blocks = envelope(x, 0.02)
   return {
     db: db(rms(w)),
+    peakDb: db(Math.max(...blocks)),
     centroidH: weighted / sum / noteHz(note),
     flatness: Math.exp(logSum / n) / (flatSum / n),
     env: [0.05, 0.3, 0.6, 0.9].map(at),

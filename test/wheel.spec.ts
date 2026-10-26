@@ -8,6 +8,7 @@ import { voiceName, voiceProblems } from '../src/sysex/codec'
 import { angleOf, mixOf, NO_PINS, SECTOR, TONALITIES, type Pin, type Tonality, type WheelChoices } from '../src/wheel/choices'
 import { BRANCH_SHARE, generateWheel, wheelName } from '../src/wheel/generate'
 import { findLayout } from '../src/wheel/layout'
+import { ensureAudible, levelLoudness, loudness, SILENT_DB, TARGET_DB } from '../src/wheel/loudness'
 import { rng } from '../src/style/random'
 import { TRANSFORMS } from '../src/wheel/transforms'
 import { rolesHold, TONALITY_DEFS } from '../src/wheel/tonalities'
@@ -202,5 +203,46 @@ describe('more pins', () => {
       TRANSFORMS[t](v, 1, rng(1))
       expect(JSON.stringify(v), t).not.toBe(JSON.stringify(base))
     }
+  })
+})
+
+describe('loudness and audibility', () => {
+  it('every tonality from one pin is levelled to the target, within 1 dB', () => {
+    for (const t of TONALITIES) for (const radius of [0, 1]) {
+      const { loudness } = generateWheel(choices([pin(t, radius)]), { seed: 1 })
+      expect(Math.abs(loudness - TARGET_DB), `${t} r${radius} ${loudness.toFixed(1)}`).toBeLessThan(1)
+    }
+  })
+
+  it('200 random pin sets: none silent, none more than 3 dB off the target', () => {
+    const r = rng(42)
+    for (let i = 0; i < 200; i++) {
+      const pins = Array.from({ length: r.int(1, 3) }, () => ({ angle: r.range(0, 360), radius: r.next(), weight: r.range(0.2, 1) }))
+      const shape = r.chance(0.5) ? r.pick(ENVELOPES) : null
+      const g = generateWheel(choices(pins, shape), { seed: i, wild: r.next() })
+      const label = JSON.stringify({ pins, shape, i })
+      expect(voiceProblems(g.voice), label).toEqual([])
+      expect(g.loudness, label).toBeGreaterThan(SILENT_DB)
+      expect(Math.abs(g.loudness - TARGET_DB), label).toBeLessThan(3)
+    }
+  })
+
+  it('levelling moves every carrier by the same steps: the balance between pins stays', () => {
+    const g = generateWheel(choices([pin('bell', 0.5, 1), pin('warm', 0.5, 0.5)]), { seed: 1 })
+    const carriers = ALGORITHMS[g.voice.common[0x10]].carriers.filter((op) => g.voice.ops[op][0x12] > 0)
+    const bell = carriers.find((op) => g.opTonality[op] === 'bell')!
+    const warm = carriers.find((op) => g.opTonality[op] === 'warm')!
+    const before = { common: g.voice.common.slice(), ops: g.voice.ops.map((o) => o.slice()) as typeof g.voice.ops }
+    before.ops[bell][0x12] -= 20
+    before.ops[warm][0x12] -= 20
+    levelLoudness(before)
+    expect(before.ops[bell][0x12] - before.ops[warm][0x12]).toBe(g.voice.ops[bell][0x12] - g.voice.ops[warm][0x12])
+  })
+
+  it('a voice with no carrier heard gets one', () => {
+    const v = generateWheel(choices([pin('bell')]), { seed: 1 }).voice
+    for (const op of ALGORITHMS[v.common[0x10]].carriers) v.ops[op][0x12] = 0
+    ensureAudible(v)
+    expect(loudness(v)).toBeGreaterThan(SILENT_DB)
   })
 })

@@ -1,6 +1,6 @@
 // The DX7 import window (PLAN §8.6, dx7Store.ts): a DX7 file's voices by name, converting in the background from the
 // moment it opens (a spinner on each that isn't done). Click one to hear it on the DX (it goes first if it isn't
-// converted yet); tick the ones to keep; Add puts them in the library. In the Style window's frame, above the
+// converted yet); Use keeps the one heard in the editor; tick the ones to keep; Add puts them in the library. In the Style window's frame, above the
 // playable keyboard.
 import { useEffect, useState } from 'react'
 import { isDone, useDx7, type Dx7Voice } from './dx7Store'
@@ -14,7 +14,7 @@ function closeness(c: Dx7Voice['converted']): { word: string; title: string } | 
 }
 
 export function Dx7Import() {
-  const { file, voices, picked, hearing, original, hear, toggle, keep, close } = useDx7()
+  const { file, voices, picked, hearing, original, hear, toggle, keep, use, close } = useDx7()
   const [adding, setAdding] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -26,6 +26,8 @@ export function Dx7Import() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   if (!file) return null
+  const heard = hearing === null ? null : voices[hearing]
+  const usable = original !== null && heard !== null && isDone(heard.converted)
   const done = voices.filter((v) => isDone(v.converted) || v.converted instanceof Error).length
   return (
     <aside className="style-sheet dx7-import" role="dialog" aria-modal="true" aria-labelledby="dx7-title">
@@ -38,7 +40,7 @@ export function Dx7Import() {
       <div className="style-sheet__body dx7-import__body">
         <p className="dim dx7-import__hint">
           {original
-            ? 'Every voice is being converted to four operators. Most lose something on the way and none sounds exactly as on a DX7 or in Dexed: click one to hear it on the DX (it goes first if it isn’t ready yet), tick the ones worth keeping.'
+            ? 'Every voice is being converted to four operators. Most lose something on the way and none sounds exactly as on a DX7 or in Dexed: click one to hear it on the DX (it goes first if it isn’t ready yet), Use takes the one you hear into the editor, tick the ones worth keeping.'
             : 'Connect the DX to hear them. Ticked voices are converted and kept all the same.'}
         </p>
         <ul className="dx7-import__list">
@@ -66,6 +68,10 @@ export function Dx7Import() {
           <span className="dim">{done < voices.length ? `${done} of ${voices.length} converted` : 'All converted'}{picked.length ? `, ${picked.length} ticked` : ''}</span>
           <span />
           <button onClick={close} title="Back to your voice (Escape)">Cancel</button>
+          <button onClick={use} disabled={!usable}
+            title={!original ? 'Connect the DX to hear it' : heard === null ? 'Click a voice first' : !usable ? 'Once it’s converted' : 'This voice in the editor, as a step you can undo; the window closes'}>
+            {heard ? `Use ${heard.name}` : 'Use'}
+          </button>
           <button className="primary" onClick={() => { setAdding(true); void keep().finally(() => setAdding(false)) }} disabled={!picked.length || adding}
             title="Keeps the ticked voices in the library (once they're converted); your voice comes back">
             {adding ? 'Adding…' : `Add ${picked.length || ''} to library`.replace('  ', ' ')}

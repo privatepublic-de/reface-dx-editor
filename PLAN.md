@@ -329,7 +329,7 @@ The volca fm generator's 41 instruments (Yamaha's DX7, TX7, TX816 and VRC voices
 - **Importing DX7 voices (2026-10-26):** the converter, the DX7 engine and a DX7 .syx reader live in `src/dx7/` (the
   engine copied from the volca fm generator; MSFA's notice in THIRD_PARTY_NOTICES.md). Import .syx… with a DX7 file
   (a voice or a bank) opens a window of names: click one to hear it converted on the DX (the Style window's preview,
-  your voice back on closing), tick the ones to keep, Add puts them in the library. No whole banks: you pick. Every voice converts in the
+  your voice back on closing), Use takes the one heard into the editor as an undo step, tick the ones to keep, Add puts them in the library. No whole banks: you pick. Every voice converts in the
   background from the moment the window opens, in file order on a pool of workers (half the cores, up to four); a
   voice clicked goes to the front, a spinner shows what's in hand; closing stops it. ROM1A, all 32: 42 s. The docs, the Help and
   the window say plainly that a converted voice is an approximation: most lose something, none sounds exactly as in

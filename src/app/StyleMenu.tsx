@@ -11,6 +11,7 @@ import type { Envelope } from '../style/shapes'
 import { TONALITY_HUES, TONALITY_LABELS, type Tonality } from '../wheel/choices'
 import { TONALITY_SPACE } from '../wheel/controls'
 import type { WheelVoice } from '../wheel/generate'
+import { voiceName } from '../sysex/codec'
 import { TONALITY_DEFS } from '../wheel/tonalities'
 import { useLibrary } from './libraryStore'
 import { useEditor } from './store'
@@ -33,14 +34,14 @@ export function InitButton() {
   )
 }
 
-/** The Style tab: opens the panel, and while it's open stays lit and joins it. */
+/** The Style button: opens the Style window. */
 export function StyleMenu() {
   const open = useStyle((s) => s.open)
   const isOpen = useStyle((s) => !!s.original)
   const busy = useBusy()
   return (
-    <button className={`voice-title__init style-tab${isOpen ? ' style-tab--open' : ''}`} onClick={open} aria-expanded={isOpen} aria-controls="style-panel"
-      disabled={busy && !isOpen} title={isOpen ? 'The style editor is open' : 'Make this voice in a style, and hear it as you choose'}>
+    <button className="voice-title__init" onClick={open} aria-haspopup="dialog" disabled={busy || isOpen}
+      title="Make a voice on the tonality wheel, and hear it as you choose">
       Style
     </button>
   )
@@ -91,6 +92,7 @@ function summaries(c: SheetChoices, own: { shapeName: string; spaceName: string 
 export function StyleSheet() {
   const { choices: c, mix, wild, sections, keepFx, dirty, original, generated, set, setMix, setWild, setSection, setKeepFx, another, mutate, newVoice, reset, apply, cancel } = useStyle()
   const first = useRef<HTMLDivElement>(null)
+  const voice = useEditor((s) => s.voice)
   // what the heaviest tonality brings when nothing is chosen: shown outlined, not as a choice
   const dominant = generated?.roles[0].tonality ?? null
   const ownShape = dominant ? TONALITY_DEFS[dominant].skeleton.shape : null
@@ -115,7 +117,13 @@ export function StyleSheet() {
     else set({ mode: c.mode === m ? null : m, register: c.register === 'lead' ? null : c.register })
   }
   return (
-    <aside className="style-sheet" id="style-panel" role="dialog" aria-label="Style">
+    <aside className="style-sheet" id="style-panel" role="dialog" aria-modal="true" aria-labelledby="style-title">
+      <div className="style-sheet__head">
+        <h2 id="style-title">Style</h2>
+        {voice && <span className="style-sheet__voice" title="What you hear">{voiceName(voice)}</span>}
+        <span />
+        <button className="style-sheet__close" onClick={cancel} aria-label="Close without keeping" title="Close without keeping (Escape)">×</button>
+      </div>
       <div className="style-sheet__body">
         <div className="style-wheel" ref={first}>
           <Wheel />

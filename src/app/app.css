@@ -380,27 +380,25 @@ button.danger { border-color: var(--bad); color: #ffb3ac; }
 
 /* ---- the style editor ---- */
 .hidden { visibility: hidden; }
-/* the style editor: a raised plate of lighter metal, edged in bronze, hanging from the Style tab between the bar and
-   the pinned keyboard; everything behind it under a dark veil (the voice name stays lit: it shows what you hear) */
+/* the Style window: a raised plate of lighter metal, edged in bronze, over the editor and above the pinned keyboard
+   (which stays playable); everything else under a dark veil */
 .main--styling { padding-bottom: calc(var(--keys-h, 0px) + 24px); }
 .main--styling .keys { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0; border-radius: 0; box-shadow: 0 -6px 18px #0007; }
-.style-scrim { position: fixed; left: 0; right: 0; top: var(--bar-h, 48px); bottom: var(--keys-h, 0px); z-index: 24; background: #060302c2; }
-.styling .bar > *:not(.voice-title), .styling .voice-title > *:not(.voice-title__name, .style-tab) { opacity: .3; }
-.style-sheet { --plate: #4a372b; --edge: var(--dx-signature); position: fixed; top: var(--bar-h, 48px); left: var(--sheet-left, 0px);
-  bottom: var(--keys-h, 0px); z-index: 25; width: min(540px, 100vw); display: flex; flex-direction: column;
+.style-scrim { position: fixed; left: 0; right: 0; top: 0; bottom: var(--keys-h, 0px); z-index: 24; background: #060302c2; }
+/* centred in the room above the keyboard, as tall as its content needs */
+.style-sheet { --plate: #4a372b; position: fixed; z-index: 25; left: 0; right: 0; top: 12px; bottom: calc(var(--keys-h, 0px) + 12px); margin: auto;
+  width: min(560px, calc(100vw - 24px)); height: fit-content; max-height: calc(100% - var(--keys-h, 0px) - 24px); display: flex; flex-direction: column;
+  overflow: hidden; border-radius: 10px;
   background: repeating-linear-gradient(90deg, #ffffff05 0 1px, transparent 1px 3px), linear-gradient(170deg, var(--plate), #33261f 80%);
-  border: 2px solid var(--edge); box-shadow: 0 18px 40px #000c, 0 0 0 1px #000; }
-/* the notch: the panel's top edge opens where the tab comes down into it */
-.style-sheet::before { content: ''; position: absolute; top: -2px; left: calc(var(--tab-left, 0px) - var(--sheet-left, 0px)); width: calc(var(--tab-w, 0px) - 4px);
-  margin-left: 2px; height: 2px; background: var(--plate); }
-.style-tab { position: relative; }
-/* open, the tab is the same plate and edge, and runs down to the bar's edge: one piece with the panel */
-.style-tab--open, .style-tab--open:disabled { background: #4a372b; border: 2px solid var(--dx-signature); border-bottom-color: transparent;
-  border-radius: 6px 6px 0 0; color: var(--ink); font-weight: 600; opacity: 1; z-index: 26; }
-/* it hangs from the tab's padding box, 2px (the bottom border) above the tab's edge: that much longer, or the bar shows
-   through as a dark line above the panel */
-.style-tab--open::after { content: ''; position: absolute; left: -2px; right: -2px; top: 100%; height: calc(var(--tab-drop, 8px) + 2px);
-  background: #4a372b; border: 2px solid var(--dx-signature); border-top: 0; border-bottom: 0; }
+  border: 2px solid var(--dx-signature); box-shadow: 0 24px 60px #000d, 0 0 0 1px #000; }
+.style-sheet__head { display: flex; align-items: center; gap: 12px; padding: 7px 8px 7px 16px; border-bottom: 1px solid #6b5444; background: #2b2019; }
+.style-sheet__head h2 { margin: 0; font: 600 16px var(--font-narrow); letter-spacing: .03em; color: var(--ink); }
+/* what you hear, as on the DX's screen */
+.style-sheet__voice { padding: 2px 10px; border-radius: 3px; background: var(--screen-lit); color: var(--screen-ink); font: 500 15px var(--font-narrow);
+  letter-spacing: .05em; text-shadow: 0 0 6px var(--screen-glow); white-space: pre; }
+.style-sheet__head > span:last-of-type { flex: 1; }
+.style-sheet__close { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-color: transparent; background: none; color: var(--ink-dim); font-size: 20px; line-height: 1; }
+.style-sheet__close:hover { color: var(--ink); }
 .style-sheet__body { flex: 1; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 14px 16px; }
 .style-sheet__foot { display: grid; gap: 8px; padding: 10px 16px 12px; border-top: 1px solid #6b5444; background: #2b2019; }
 .style-sheet__actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
@@ -500,8 +498,7 @@ button.link { background: none; border: none; padding: 0 4px; color: var(--ink-d
   .slider { grid-template-columns: 5.5em 1fr; }
   .slider__end { display: none; }
   .slider:has(.slider__value) { grid-template-columns: 5.5em 1fr 3em; }
-  /* the bar wraps on a phone: the tab stays lit, but doesn't run down over the row below */
-  .style-tab--open { border-bottom-color: var(--dx-signature); border-radius: 6px; }
-  .style-tab--open::after, .style-sheet::before { display: none; }
+  /* a phone: the window fills the room above the keyboard */
+  .style-sheet { top: 0; bottom: var(--keys-h, 0px); width: 100vw; height: auto; max-height: none; border-radius: 0; border-width: 0 0 2px; }
 }
 

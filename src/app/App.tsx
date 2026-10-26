@@ -44,9 +44,9 @@ export function App() {
   )
 }
 
-/** While the style editor is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
- *  the bottom, and the panel fills the space between the bar and the keyboard, under the Style tab it hangs from
- *  (the heights, the panel's left edge and the tab's drop to the bar's edge as CSS variables). */
+/** While the Style window is open: the bar, the editor and the library are locked (inert), the keyboard is pinned to
+ *  the bottom and stays playable, and the window sits centred in the room above it (the keyboard's height as a CSS
+ *  variable). */
 function useStyleLayout(styling: boolean) {
   useEffect(() => {
     const locked = ['.bar', '.stage', '.library'].flatMap((q) => [...document.querySelectorAll(q)])
@@ -55,23 +55,12 @@ function useStyleLayout(styling: boolean) {
     if (!styling) return
     const root = document.documentElement
     const measure = () => {
-      const bar = document.querySelector('.bar')?.getBoundingClientRect()
-      const tab = document.querySelector('.style-tab')?.getBoundingClientRect()
-      // as wide as the CSS makes it (wider windows: the wheel and the controls side by side)
-      const width = document.querySelector('.style-sheet')?.getBoundingClientRect().width ?? Math.min(540, window.innerWidth)
-      root.style.setProperty('--bar-h', `${bar?.height ?? 0}px`)
       root.style.setProperty('--keys-h', `${document.querySelector('.keys')?.getBoundingClientRect().height ?? 0}px`)
-      if (bar && tab) {
-        root.style.setProperty('--sheet-left', `${Math.max(0, Math.min(tab.left - 16, window.innerWidth - width))}px`)
-        root.style.setProperty('--tab-drop', `${Math.max(0, bar.bottom - tab.bottom)}px`)
-        root.style.setProperty('--tab-left', `${tab.left}px`)
-        root.style.setProperty('--tab-w', `${tab.width}px`)
-      }
     }
     window.addEventListener('resize', measure)
     measure()
     const watch = new ResizeObserver(measure)
-    for (const q of ['.bar', '.keys']) {
+    for (const q of ['.keys']) {
       const el = document.querySelector(q)
       if (el) watch.observe(el)
     }

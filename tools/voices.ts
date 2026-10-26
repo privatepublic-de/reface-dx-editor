@@ -73,7 +73,7 @@ export function probes(groups: readonly string[] = []): Probe[] {
   }
   if (want('instruments')) {
     // Start from…: converted DX7 instruments as the wheel plays them alone at Wild none (tools/fromDx7.ts)
-    for (const [id, note, holdS] of [['epiano', 60, 1.2], ['piano', 48, 1.5], ['trumpet', 60, 1.2], ['kick', 48, 0.6], ['snare', 60, 0.6], ['hiHat', 72, 0.5], ['vibraphone', 72, 1.2], ['fmBass', 36, 0.8]] as const) {
+    for (const [id, note, holdS] of [['epiano', 60, 1.2], ['piano', 48, 1.5], ['trumpet', 60, 1.2], ['kick', 48, 0.6], ['snare', 60, 0.6], ['hiHat', 72, 0.5], ['vibraphone', 72, 1.2], ['fmBass', 36, 0.8], ['pizzicato', 60, 0.6], ['tom', 48, 0.6], ['xylophone', 72, 0.6]] as const) {
       out.push({ group: 'instruments', label: `instrument ${id}`, voice: generateWheel({ ...NO_PINS, instrument: id }, { seed: 1, wild: 0 }).voice, note, holdS })
     }
   }

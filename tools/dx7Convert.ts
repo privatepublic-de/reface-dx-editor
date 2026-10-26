@@ -128,9 +128,9 @@ export function dxEnvelopeDb(rates: number[], levels: number[], outLevelUnits: n
   return out
 }
 
-/** The fastest first decay after an attack that the DX still lets be heard (local fastdecay takes, 2026-10-26: at
- *  R2 95 the peak is 6 dB down, at 105 30 dB, from 115 the note is silent). */
-const FIRST_FALL_MAX = 95
+/** The fastest first decay after an attack whose peak the DX plays reliably (docs/SOUND.md "Right after the attack":
+ *  up to 80 every take loses 2–3 dB; above, a take loses either a little or a lot, by where the key-on falls). */
+const FIRST_FALL_MAX = 80
 export const EG_STEP = 0.005
 export const EG_HOLD = 3
 export const EG_TOTAL = 5
@@ -315,10 +315,22 @@ export function translateOp(v: DxVoice, n: number): Uint8Array {
     if (want >= 0) for (let r = 127; r >= 0; r--) if (err(r) < err(r1) - 1e-9 || r === 127) r1 = r
   }
   const rates = fitRates(egOnly, levels, [r1, ...dxRates.slice(1).map((r) => Math.round((r * 127) / 99))], carrier ? [1, 2, 3] : [0, 1, 2, 3])
-  // a first fall faster than this right after the attack takes the note's peak away on the DX (docs/SOUND.md)
-  if (levels[1] < levels[0]) rates[1] = Math.min(FIRST_FALL_MAX, rates[1])
-  o.set(rates, 0x01)
-  o.set(levels, 0x05)
+  // a first fall faster than this right after the attack takes the note's peak away on the DX (docs/SOUND.md). Where
+  // it was wanted faster and the DX7's third stage only holds (L3 = L2: drums, plucks), fall at the limit for a
+  // moment, then fast: the DX plays that alike every time
+  let eg = { rates, levels }
+  if (levels[1] < levels[0] && rates[1] > FIRST_FALL_MAX) {
+    const capped = { rates: [rates[0], FIRST_FALL_MAX, rates[2], rates[3]], levels }
+    const err = (e: { rates: number[]; levels: number[] }) => curveError(egOnly, envelopeDb(e.rates, e.levels, EG_HOLD, EG_TOTAL, EG_STEP))
+    eg = capped
+    if (dxLevels[1] === dxLevels[2]) for (let mid = levels[0] - 4; mid > levels[1]; mid -= 4) {
+      const ls = [levels[0], mid, levels[1], levels[3]]
+      const two = { rates: fitRates(egOnly, ls, [rates[0], FIRST_FALL_MAX, rates[1], rates[3]], [2]), levels: ls }
+      if (err(two) < err(eg)) eg = two
+    }
+  }
+  o.set(eg.rates, 0x01)
+  o.set(eg.levels, 0x05)
   // amplitude modulation: the dip the DX7's LFO makes on this operator
   const ams = at('ampModSens')
   const dip = ams && v[VC.lfoAmpDepth] ? (v[VC.lfoAmpDepth] / 99) * AMP_MOD_DEPTH[ams] * DB_PER_UNIT : 0

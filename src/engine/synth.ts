@@ -1,5 +1,5 @@
 // A reface DX voice as sound, for probes (PLAN §8): four operators, the 12 algorithms, feedback on every
-// operator (saw or square), the envelopes, keyboard scaling, velocity, LFO and pitch EG. Offline only: it renders a
+// operator (a wave shape from sine to saw or square, as measured), the envelopes, keyboard scaling, velocity, LFO and pitch EG. Offline only: it renders a
 // note in tests and tools so a style's change can be measured without the DX's audio out. The DX's effects aren't
 // in it: it renders dry. Built after the volca fm generator's DX7 engine, in its own units: levels in dB, phase in
 // cycles, modulation in cycles. Plain TypeScript, no browser globals.
@@ -7,14 +7,14 @@ import { ALGORITHMS } from '../params/algorithms'
 import { fixedHzOf, ratioOf } from '../params/display'
 import type { Voice } from '../sysex/codec'
 import {
-  ampModDb, ATTACK_FLOOR_DB, attackDbPerS, decayDbPerS, detuneFactor, feedbackGain, kscDb, levelDb, lfoDelayS, lfoHz,
+  ampModDb, ATTACK_OVERSHOOT, attackTau, decayDbPerS, detuneFactor, egLevelDb, feedbackWave, kscDb, levelDb, lfoDelayS, lfoHz,
   pitchEgSemitones, pitchEgSemitonesPerS, pitchModSemitones, rateScale, SILENT_DB, TUNING, velocityDb,
 } from './tables'
 
-/** Four carriers at full level stay within ±1. */
-const OUTPUT_SCALE = 1 / 4
 
-/** A four-stage envelope in dB: from L4 at key-on, R1 → L1, R2 → L2, R3 → L3, held; R4 → L4 after key-off. */
+/** A four-stage envelope: from L4 at key-on, R1 → L1, R2 → L2, R3 → L3, held; R4 → L4 after key-off. Falling, it
+ *  moves at a steady rate in dB; rising, its amplitude approaches ATTACK_OVERSHOOT times the target exponentially
+ *  and stops at the target (both measured, docs/SOUND.md). */
 class Env {
   private rates = [0, 0, 0, 0]
   private levels = [0, 0, 0, 0]
@@ -23,13 +23,17 @@ class Env {
   private down = true
   private target = 0
   private step = 0
+  private rising = false
+  /** rising: the amplitude now, and the target's */
+  private amp = 0
+  private targetAmp = 0
   db = SILENT_DB
 
   constructor(private readonly sampleRate: number) {}
 
   init(rates: number[], levels: number[], speed: number) {
     this.rates = rates
-    this.levels = levels.map(levelDb)
+    this.levels = levels.map(egLevelDb)
     this.speed = speed
     this.db = this.levels[3]
     this.down = true
@@ -50,19 +54,32 @@ class Env {
     this.ix = ix
     if (ix >= 4) return
     this.target = this.levels[ix]
-    const rising = this.target > this.db
-    // an attack starts from a floor, as on the DX7: a rise from silence doesn't crawl up from −120 dB
-    if (rising && this.db < ATTACK_FLOOR_DB) this.db = Math.min(this.target, ATTACK_FLOOR_DB)
-    const perS = rising ? attackDbPerS(this.rates[ix]) : decayDbPerS(this.rates[ix])
-    this.step = (rising ? 1 : -1) * perS * this.speed / this.sampleRate
+    this.rising = this.target > this.db
+    if (this.rising) {
+      this.amp = this.db <= SILENT_DB ? 0 : 10 ** (this.db / 20)
+      this.targetAmp = 10 ** (this.target / 20)
+      // the share of the way to the overshoot covered per sample
+      this.step = 1 - Math.exp(-this.speed / (attackTau(this.rates[ix]) * this.sampleRate))
+    } else {
+      this.step = (-decayDbPerS(this.rates[ix]) * this.speed) / this.sampleRate
+    }
   }
 
   next(): number {
     if (this.ix < 3 || (this.ix === 3 && !this.down)) {
-      this.db += this.step
-      if (this.step >= 0 ? this.db >= this.target : this.db <= this.target) {
-        this.db = this.target
-        this.advance(this.ix + 1)
+      if (this.rising) {
+        this.amp += (ATTACK_OVERSHOOT * this.targetAmp - this.amp) * this.step
+        this.db = this.amp > 0 ? Math.max(SILENT_DB, 20 * Math.log10(this.amp)) : SILENT_DB
+        if (this.amp >= this.targetAmp) {
+          this.db = this.target
+          this.advance(this.ix + 1)
+        }
+      } else {
+        this.db += this.step
+        if (this.db <= this.target) {
+          this.db = this.target
+          this.advance(this.ix + 1)
+        }
       }
     }
     return this.db
@@ -173,14 +190,13 @@ interface OpState {
   offsetDb: number
   hz: number
   phase: number
-  feedback: number
-  square: boolean
+  /** the wave its feedback shapes, one cycle, its fundamental as a sine's, or null for a sine */
+  wave: Float32Array | null
+  /** how loud that wave is heard against how hard it modulates (measured, feedbackWave) */
+  heard: number
   amdDb: number
   pmd: boolean
   peg: boolean
-  /** the last two outputs, in cycles, for feedback */
-  out0: number
-  out1: number
   /** this sample's output */
   y: number
 }
@@ -198,7 +214,7 @@ class Note {
 
   constructor(private readonly sampleRate: number) {
     this.ops = Array.from({ length: 4 }, () => ({
-      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, feedback: 0, square: false, amdDb: 0, pmd: false, peg: false, out0: 0, out1: 0, y: 0,
+      env: new Env(sampleRate), on: true, offsetDb: 0, hz: 0, phase: 0, wave: null, heard: 1, amdDb: 0, pmd: false, peg: false, y: 0,
     }))
     this.pitchEnv = new PitchEnv(sampleRate)
   }
@@ -220,13 +236,14 @@ class Note {
       s.offsetDb = levelDb(o[0x12]) + kscDb(note, o[0x0a], o[0x0b], o[0x0c], o[0x0d]) + velocityDb(velocity, o[0x11])
       s.env.init([o[0x01], o[0x02], o[0x03], o[0x04]], [o[0x05], o[0x06], o[0x07], o[0x08]], rateScale(note, o[0x09]))
       s.hz = (o[0x15] ? fixedHzOf(o[0x16], o[0x17]) : keyHz * ratioOf(o[0x16], o[0x17])) * detuneFactor(o[0x18])
-      s.feedback = feedbackGain(o[0x13])
-      s.square = o[0x14] !== 0
+      const wave = o[0x13] ? waveOf(o[0x13], o[0x14] !== 0, Math.floor(this.sampleRate / 2 / Math.max(1, s.hz))) : null
+      s.wave = wave?.samples ?? null
+      s.heard = wave?.heard ?? 1
       s.amdDb = ampModDb(o[0x0e])
       s.pmd = o[0x0f] !== 0
       s.peg = o[0x10] !== 0
       s.phase = 0
-      s.out0 = s.out1 = s.y = 0
+      s.y = 0
     })
     this.pitchEnv.init([v.common[0x15], v.common[0x16], v.common[0x17], v.common[0x18]], [v.common[0x19], v.common[0x1a], v.common[0x1b], v.common[0x1c]])
     this.pmdSemitones = pitchModSemitones(v.common[0x14])
@@ -256,24 +273,54 @@ class Note {
         const amp = TUNING.maxCycles * 10 ** (db / 20)
         let mod = 0
         for (const m of this.modulators[i]) mod += this.ops[m].y
-        if (s.feedback) {
-          const last = (s.out0 + s.out1) / 2
-          // saw: the output moves its own phase; square: its square does (estimate: that keeps the wave symmetric
-          // over half a cycle, so only odd harmonics, as a square has)
-          mod += s.feedback * (s.square ? (last * last) / amp : last)
-        }
-        s.y = amp * Math.sin(2 * Math.PI * (s.phase + mod))
+        const p = s.phase + mod
+        s.y = amp * (s.wave ? lookup(s.wave, p) : Math.sin(2 * Math.PI * p))
       }
-      s.out0 = s.out1
-      s.out1 = s.y
     }
     let out = 0
-    for (const c of this.carriers) out += this.ops[c].y / TUNING.maxCycles
+    for (const c of this.carriers) out += (this.ops[c].y * this.ops[c].heard) / TUNING.maxCycles
+    // the DX divides by the number of carriers (measured: two carriers 6 dB, four 12 dB quieter than one)
+    out /= this.carriers.length
     if (this.released && this.carriers.every((c) => !this.ops[c].on || (this.ops[c].env.finished && this.ops[c].env.db + this.ops[c].offsetDb <= SILENT_DB))) {
       this.active = false
     }
-    return out * OUTPUT_SCALE
+    return out * TUNING.outputScale
   }
+}
+
+/** One cycle of a feedback wave, in this many points. */
+const WAVE_SIZE = 2048
+const waves = new Map<string, { samples: Float32Array; heard: number }>()
+
+/** The wave for feedback `fb`, saw or square, with the harmonics up to `maxHarmonic` (below half the sample rate,
+ *  so a high note doesn't alias). Measured on the DX (tools/voiceProbe.ts, 2026-10-26): as a modulator its
+ *  fundamental keeps a sine's full strength and the harmonics come on top (a saw at level 50 brightens its carrier
+ *  to ~10–15 harmonics; scaled to the loudness heard, only to 6); heard as a carrier, it is as loud against a sine as
+ *  feedbackWave says, so `heard` scales it down there. Cached. */
+function waveOf(fb: number, square: boolean, maxHarmonic: number) {
+  const top = Math.max(1, Math.min(64, maxHarmonic))
+  const key = `${fb}${square ? 's' : 'w'}${top}`
+  let w = waves.get(key)
+  if (w) return w
+  const { gainDb, harmonics } = feedbackWave(fb, square, top)
+  const samples = new Float32Array(WAVE_SIZE)
+  for (let i = 0; i < WAVE_SIZE; i++) {
+    let x = 0
+    harmonics.forEach((a, k) => { if (a) x += a * Math.sin((2 * Math.PI * (k + 1) * i) / WAVE_SIZE) })
+    samples[i] = x
+  }
+  const rms = Math.sqrt(harmonics.reduce((sum, a) => sum + a * a, 0) / 2)
+  w = { samples, heard: 10 ** (gainDb / 20) / Math.SQRT2 / rms }
+  waves.set(key, w)
+  return w
+}
+
+/** The wave at phase `p` (cycles), linearly between its points. */
+function lookup(w: Float32Array, p: number): number {
+  const x = (p - Math.floor(p)) * WAVE_SIZE
+  const i = Math.floor(x)
+  const f = x - i
+  return w[i] * (1 - f) + w[(i + 1) % WAVE_SIZE] * f
 }
 
 /** The reface DX plays eight notes at once. */

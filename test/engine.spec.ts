@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderNote, type RenderOptions } from '../src/engine/render'
-import { flatness, periodicity, pitch, rms, slice, toDb, type Segment } from '../src/engine/measure'
+import { centroid, flatness, pitch, rms, slice, toDb, type Segment } from '../src/engine/measure'
+import { ALGORITHMS } from '../src/params/algorithms'
 import { fixedBytes } from '../src/params/display'
 import { initVoice } from '../src/params/init'
 import { cloneVoice, type Voice } from '../src/sysex/codec'
@@ -92,32 +93,70 @@ describe('against the DX (test/fixtures/dx-curves.json)', () => {
   })
 })
 
-describe('feedback (to calibrate: tools/dxCurves.ts feedback)', () => {
-  /** OP1 alone at full level: the feedback follows the operator's own level */
-  const fb = (level: number, square: boolean) => voice((v) => {
-    v.ops[0][0x12] = 127
-    v.ops[0][0x13] = level
-    v.ops[0][0x14] = square ? 1 : 0
+describe('feedback, against the DX (test/fixtures/dx-curves.json)', () => {
+  it('shapes the wave as the DX does: H2–H8 within 0.5 dB, for saw and square, at full level and at 100', () => {
+    for (const p of points('feedback')) {
+      const name = `${p.at.square ? 'square' : 'saw'}${p.at.level ? '100' : ''}` as keyof typeof CURVES.feedback
+      const dx = (CURVES.feedback[name] as Record<string, { h: number[] }>)[String(p.at.feedback)]
+      const h = p.measure(Float64Array.from(renderNote(p.voice, { note: p.note, holdSeconds: p.holdS, sampleRate: RATE }))).h as number[]
+      // the harmonics that are there (a square's even ones are below −80 on both)
+      for (let k = 1; k < 8; k++) if (dx.h[k] > -60) expect(Math.abs(h[k] - dx.h[k]), `${JSON.stringify(p.at)} H${k + 1}`).toBeLessThan(0.5)
+    }
   })
 
-  it('saw feedback brings in every harmonic, more with more feedback', () => {
-    const mid = harmonicsOf(fb(96, false))
-    const high = harmonicsOf(fb(112, false))
-    expect(mid[1]).toBeGreaterThan(-30)
-    expect(high[1]).toBeGreaterThan(mid[1])
-    expect(high[2]).toBeGreaterThan(mid[2])
+  it('never turns to noise, and doesn’t follow the operator’s level', () => {
+    const fb = (feedback: number, level: number) => voice((v) => {
+      v.ops[0][0x12] = level
+      v.ops[0][0x13] = feedback
+    })
+    expect(flatness(steady(play(fb(127, 127), { note: 48 })))).toBeLessThan(0.01)
+    expect(harmonicsOf(fb(112, 80))[1]).toBeCloseTo(harmonicsOf(fb(112, 127))[1], 0)
   })
 
-  it('square feedback brings in odd harmonics only', () => {
-    const h = harmonicsOf(fb(112, true))
-    expect(h[2]).toBeGreaterThan(-30)
-    expect(h[2] - Math.max(h[1], h[3])).toBeGreaterThan(30)
+  it('a shaped modulator modulates harder than a sine at the same level (voiceProbe: its fundamental at full strength)', () => {
+    const mod = (feedback: number) => voice((v) => {
+      v.ops[0][0x12] = 127
+      v.ops[1].set([127, 127, 127, 127, 127, 127, 127, 0], 0x01)
+      v.ops[1][0x12] = 60
+      v.ops[1][0x13] = feedback
+    })
+    const centroidOf = (v: Voice) => centroid(steady(play(v, { note: 48 })))
+    expect(centroidOf(mod(127))).toBeGreaterThan(2 * centroidOf(mod(0)))
+  })
+})
+
+describe('levels and velocity, against the DX', () => {
+  const loud = (v: Voice, velocity = 100) => toDb(rms(steady(play(v, { velocity }))))
+  it('output level and EG level within 0.5 dB of the DX, against level 127', () => {
+    for (const curve of ['carrier', 'eglevel'] as const) {
+      const ref = engine(curve)[0].m.db as number
+      for (const { at, m } of engine(curve)) {
+        const dx = CURVES[curve][String(at.level) as keyof (typeof CURVES)[typeof curve]] - CURVES[curve]['127']
+        expect(Math.abs((m.db as number) - ref - dx), `${curve} ${at.level}`).toBeLessThan(0.5)
+      }
+    }
   })
 
-  it('saw feedback near the top turns to noise (at C3; the DX’s takes will say how it goes with pitch)', () => {
-    const at = (level: number) => steady(play(fb(level, false), { note: 48 }))
-    expect(flatness(at(120))).toBeGreaterThan(0.3)
-    expect(periodicity(at(127))).toBeLessThan(periodicity(at(96)) - 0.3)
+  it('velocity within 0.5 dB of the DX', () => {
+    for (const sens of [64, 127]) {
+      const v = voice((x) => (x.ops[0][0x11] = sens))
+      const table = CURVES.velocity[String(sens) as '64']
+      for (const vel of [20, 40, 64, 100]) {
+        const dx = table[String(vel) as '20'] - table['127']
+        expect(Math.abs(loud(v, vel) - loud(v, 127) - dx), `sens ${sens} velocity ${vel}`).toBeLessThan(0.5)
+      }
+    }
+  })
+
+  it('the output is divided by the number of carriers (two 6 dB, four 12 dB quieter than one)', () => {
+    const carriers = (algorithm: number) => voice((v) => {
+      v.common[0x10] = algorithm
+      v.ops.forEach((o) => { o[0x12] = 127; o.set([127, 127, 127, 127, 127, 127, 127, 0], 0x01) })
+      // the modulators silent: only the carriers count
+      for (let op = 0; op < 4; op++) if (!ALGORITHMS[algorithm].carriers.includes(op)) v.ops[op][0x12] = 0
+    })
+    // one carrier at 127, four at 127 in phase: four times the amplitude, divided by four
+    expect(loud(carriers(11)) - loud(carriers(0))).toBeCloseTo(0, 0)
   })
 })
 

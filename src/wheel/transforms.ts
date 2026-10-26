@@ -10,7 +10,8 @@ import type { Tonality } from './choices'
 
 export const clamp = (x: number, lo = 0, hi = 127) => Math.max(lo, Math.min(hi, Math.round(x)))
 
-/** A noise operator: square feedback near the top. Intensity, brightness and transforms leave it alone. */
+/** A noise operator: a square wave (feedback near the top) whose modulation roughens what it modulates. Intensity,
+ *  brightness and transforms leave it alone. */
 export const isNoiseOp = (v: Voice, op: number) => v.ops[op][0x14] === 1 && v.ops[op][0x13] >= 112
 
 export const level = (v: Voice, op: number) => v.ops[op][0x12]
@@ -72,7 +73,7 @@ function vibratoAtLeast(v: Voice, speed: number, delay: number, depth: number) {
 
 /** Breath or noise into the voice, `a` 0 … 1: the least important modulator turns into a noise operator (square
  *  feedback at the top), as rough as its level, from `low` to `top`; without one, the highest carrier gets an airy
- *  feedback. Noise only comes from high levels (tonalities.ts, the noise graft). */
+ *  feedback. The roughness grows with the level up to ~112 (tonalities.ts, the noise graft). */
 function addNoise(v: Voice, a: number, low: number, top: number) {
   const { carriers, modulators } = roles(v)
   const m = modulators[modulators.length - 1]
@@ -133,8 +134,8 @@ export const TRANSFORMS: Record<Tonality, (v: Voice, a: number, rng: Rng) => voi
     })
     vibratoAtLeast(v, 75, 60, Math.round(6 * a))
   },
-  breath: (v, a) => addNoise(v, a, 96, 112),
-  noise: (v, a) => addNoise(v, a, 104, 124),
+  breath: (v, a) => addNoise(v, a, 76, 100),
+  noise: (v, a) => addNoise(v, a, 88, 116),
   metallic(v, a, rng) {
     // every modulator toward an inharmonic ratio as far as the amount; past half, the last carrier off the first
     const { carriers, modulators } = roles(v)

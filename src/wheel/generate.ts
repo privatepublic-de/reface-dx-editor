@@ -162,7 +162,7 @@ function balance(v: Voice, carrier: number, share: number) {
 
 /** A tonality grafted into the base: its modulator (`op`) in the base's main carrier (`into`) at its ratio to it,
  *  as deep as the share over BRANCH_SHARE … GRAFT_UNTIL and ±24 by radius, with the carrier's envelope; for noise
- *  its square feedback near the top roughens the carrier. In place. */
+ *  a square wave roughens the carrier. In place. */
 function graft(v: Voice, part: MixPart, share: number, op: number, into: number, rng: Rng) {
   const spec = TONALITY_DEFS[part.tonality].graft!
   const o = v.ops[op]

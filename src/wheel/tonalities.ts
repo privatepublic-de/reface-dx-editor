@@ -4,7 +4,7 @@
 // tune on the DX: change the numbers here, not the code.
 // The reface's own scale (docs/SOUND.md): a modulator at 1 : 1 adds a touch at ~50, clearly at ~65, strongly at ~75,
 // and from 80 the harmonics outgrow the fundamental. Every operator has feedback: saw for all harmonics, square for
-// odd ones, both noisy near the top. Where a style family (style/templates.ts) matched, its tuned numbers are taken.
+// odd ones; the wave alone is never noise (docs/SOUND.md), noise comes from such waves modulating deep. Where a style family (style/templates.ts) matched, its tuned numbers are taken.
 // Operators are 0-based (0 = OP1), algorithms 1–12 as the DX numbers them.
 import { ALGORITHMS } from '../params/algorithms'
 import { fixedBytes, ratioBytes } from '../params/display'
@@ -68,7 +68,7 @@ export interface GraftSpec {
   level: readonly [number, number]
   fast?: boolean
   velocity?: number
-  /** square feedback near the top: the modulator roughens the carrier with noise */
+  /** a square-wave modulator (feedback at the top) roughens the carrier towards noise, as deep as its level */
   noise?: boolean
 }
 
@@ -168,9 +168,9 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
       ],
     },
     branch: { carrier: { ratio: [1, 2], level: [96, 108], feedback: [118, 127], square: true }, modulator: { fixed: [1500, 6000], level: [118, 127], feedback: [120, 127], square: true }, solo: { ratio: [1, 2], level: [96, 108], feedback: [122, 127], square: true } },
-    // noise only comes from high levels (in the probe engine feedback follows the operator's level, as on the DX7:
-    // flatness 0.03 at 110, 0.3 at 120; whether the reface does too, its feedback takes will tell)
-    graft: { ratio: [1, 3.5], level: [106, 124], noise: true },
+    // measured on the DX (tools/voiceProbe.ts noise, into Metal): flatness 0.013 at level 80, 0.032 at 100, 0.045
+    // at 112 and no more above; brightness 19 → 28 harmonics
+    graft: { ratio: [1, 3.5], level: [84, 116], noise: true },
   },
   // dense inharmonic: three modulators into one carrier, none at whole ratios, one buzzing
   metallic: {

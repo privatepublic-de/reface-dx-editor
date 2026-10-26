@@ -159,22 +159,33 @@ With no colour chosen, the characters bring one: analogue chorus, hollow phaser,
 ## The probe engine (PLAN §8, step 1)
 
 `src/engine/` plays a reface DX voice offline (four operators, the 12 algorithms, feedback on every operator, the
-envelopes, keyboard scaling, velocity, LFO and pitch EG; no effects). `tools/curves.ts` holds the curve probes
-both sides use: `tools/dxCurves.ts` plays them on the DX, `tools/engineCurves.ts` renders them in the engine and
-prints both, measured by the same code. Re-measuring the 2026-10-23 WAVs with that shared code gives the logged
-values again. `test/engine.spec.ts` checks the engine against them (`test/fixtures/dx-curves.json`).
+envelopes, keyboard scaling, velocity, LFO and pitch EG; no effects). Two probes keep it honest, each playing the
+same voices on the DX and in the engine and measuring both with the same code:
 
-| Curve | Engine against the DX (2026-10-26) |
-| --- | --- |
-| Attack, R1 30–100 | within 1 % (the measured times are its table, so this checks the model, not the fit) |
-| Decay to −20 dB, R2 30–100 | within 6 %; to −40 dB it's 10 % slower at 70–90, and R2 100 reaches −40 dB in 74 ms against the DX's 222 |
-| Modulator depth, H2–H5 | 2.0 dB mean error after fitting: **0.39 dB per level step**, a full-level operator modulates by **2.0 cycles** |
+- `tools/curves.ts` (`dxCurves.ts` on the DX, `engineCurves.ts` for the engine): one parameter at a time.
+- `tools/voices.ts` (`voiceProbe.ts`): whole voices. `--compare` replays the voices the DX played (every take keeps
+  its voice as a `.syx` beside the WAV) without the DX.
 
-Still estimates, each marked in `src/engine/tables.ts`: carrier and EG level below 40, feedback (how strong, and
-what square does: here its output squared moves the phase, which keeps only odd harmonics), velocity, keyboard
-scaling, rate scaling, detune, LFO speed, delay and depths, pitch EG rates. As the engine has them: saw feedback
-gets brighter step by step and turns to noise from about 120 (flatness ~0.4); square feedback keeps to odd
-harmonics and is noisy from about 112. Both follow the operator's own level, as on the DX7.
+`test/engine.spec.ts` checks the engine against the curves (`test/fixtures/dx-curves.json`).
 
-Next recording session on the DX: `npx vite-node tools/dxCurves.ts carrier eglevel feedback velocity` (every take now keeps its voice as a .syx beside the WAV), then
-`npx vite-node tools/engineCurves.ts` to compare and fit.
+### What the DX does, measured 2026-10-26
+
+| | Measured | In the engine |
+| --- | --- | --- |
+| Output level | **0.375 dB a step** from 127 down to 32 (−35.6 dB), steeper below (8: −59.6 dB) | the same table; within 0.1 dB |
+| EG level | **gentler than the output level**: 112 −2.6 dB, 96 −5.7, 64 −13, 32 −22.4, 8 −36 | the same table |
+| Feedback | **a wave shape, not noise**: saw feedback turns the sine into a saw (H2 −6.3, H3 −10, H4 −12.6 dB at 127, nearly 1/n), square feedback into a square (odd harmonics only). From ~96 the shape hardly changes, the wave only gets quieter (−6.6 dB at 127). **The same at any output level** (unlike the DX7, where feedback follows the operator's level) | the measured harmonics per value, H2–H8 within 0.5 dB |
+| Feedback as a modulator | a shaped modulator modulates **as if its fundamental keeps a sine's full strength**, the harmonics on top: at level 50 a saw modulator brightens its carrier to 15 harmonics, a square to 9 | the same; 10 and 8 harmonics (closer above) |
+| Velocity | full sensitivity takes **0.375 dB (one output level step) per velocity step** below 127, half sensitivity half that | the same; within 0.3 dB |
+| Carriers | **the output is divided by the number of carriers**: two carriers 6 dB, four 12 dB quieter than one at the same levels | the same |
+| Attack | the amplitude **approaches 1.5 × its target exponentially** and stops there: fast at first, slowing into the top | the same; within 1–3 dB along the way, times within 3 % |
+| Modulator depth | (2026-10-23) | 0.7 dB mean error on H2–H5 at 0.375 dB a step and 2.0 cycles at full level |
+
+**Noise** comes from square (or saw) waves modulating deep, not from feedback alone: the FM noise voice measures a
+flatness of 0.81 on the DX (0.75 in the engine); a square modulator grafted into Metal 0.013 at level 80, 0.032 at
+100, 0.045 at 112 and no more above (engine 0.020, 0.031, 0.027).
+
+**Whole voices** (one pin per tonality): loudness within ~1–2 dB, brightness and envelope close for most. Still off:
+String is twice as bright in the engine (centroid 9.0 against 4.6 harmonics), FM noise ~5 dB quieter, a saw
+modulator at 110 9 dB louder, and the DX's release after key-off at rate 127 isn't instant (−15 … −60 dB 100 ms
+later, depending on the voice). Still estimates: keyboard and rate scaling, detune, LFO, pitch EG rates, AMD.

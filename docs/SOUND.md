@@ -211,6 +211,9 @@ engine has each as a table (`src/engine/tables.ts`) and `test/engine.spec.ts` ch
 | Keyboard level scaling | break point C3 (MIDI 60); linear 18 dB an octave at depth 127, exponential 9 dB × octaves² (9, 36, 81), both in proportion to the depth; up (+lin, +exp) the same, but never above full level |
 | Rate scaling | centred on C3: slower below, faster above; at 127 twice as fast an octave up (64: 1.38 ×) |
 
+PMD being quadratic made the tonalities' and the style families' vibratos (PMD 5–8: ±0.03–0.07 semitones) too
+small to hear; they are now PMD 10–13 (±0.15–0.25 semitones) at speeds 82–95 (4.8–7.6 Hz).
+
 With these, the engine has no estimates left: every table is a measurement (the lowest output and EG levels, 1–7,
 extend the measured slope).
 

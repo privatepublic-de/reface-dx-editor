@@ -98,7 +98,8 @@ export function applyRegister(v: Voice, r: Register | null, mode: Mode | null) {
     v.common[0x0e] = Math.max(v.common[0x0e], 25)
   }
   if (!v.common[0x14]) {
-    v.common.set([0, 85, 70, 8], 0x11)
+    // ~5 Hz, ±0.25 semitones after ~0.4 s (measured: PMD is quadratic, ±24 semitones at 127)
+    v.common.set([0, 86, 70, 13], 0x11)
     for (const op of roles(v).carriers) v.ops[op][0x0f] = 1
   }
 }

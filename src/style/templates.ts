@@ -36,7 +36,8 @@ export interface Template {
   mono?: 'mono' | 'legato'
   portamento?: number
   transpose?: number
-  /** delayed vibrato: LFO speed, delay, pitch modulation depth (on every operator) */
+  /** delayed vibrato: LFO speed, delay, pitch modulation depth (on every operator); PMD is quadratic (docs/SOUND.md),
+   *  so below ~10 a vibrato is not heard */
   vibrato?: readonly [speed: number, delay: number, depth: number]
   /** length when none is chosen (−1 short … 1 long) */
   length?: number
@@ -53,7 +54,7 @@ export const TEMPLATES: Record<Family, Template> = {
     ],
   },
   organ: {
-    algorithms: [12], shape: 'gate', space: 'room', vibrato: [95, 0, 5],
+    algorithms: [12], shape: 'gate', space: 'room', vibrato: [95, 0, 10],
     ops: [
       { ratio: [0.5, 1], level: [105, 115] },
       { ratio: [1, 2], level: [115, 125] },
@@ -64,7 +65,7 @@ export const TEMPLATES: Record<Family, Template> = {
   // two detuned saws (saw feedback on both carriers), lightly modulated: measured, the first version was as close
   // to brass as another seed is
   strings: {
-    algorithms: [8], shape: 'bowed', space: 'hall', vibrato: [75, 60, 6],
+    algorithms: [8], shape: 'bowed', space: 'hall', vibrato: [82, 60, 12],
     ops: [
       { ratio: 1, level: 115, feedback: [75, 95], detune: [-10, -6] },
       { ratio: [1, 2], level: [40, 52] },
@@ -114,7 +115,7 @@ export const TEMPLATES: Record<Family, Template> = {
   // breath at the start (a fixed-frequency noise modulator that dies away), a reedy body (OP2, at 2 : 1 a clarinet's
   // odd harmonics), a little buzz (feedback), delayed vibrato
   wind: {
-    algorithms: [5], shape: 'bowed', space: 'room', vibrato: [70, 80, 7],
+    algorithms: [5], shape: 'bowed', space: 'room', vibrato: [84, 80, 12],
     ops: [
       { ratio: 1, level: 120, feedback: [15, 35] },
       { ratio: [1, 2], level: [64, 76], velocity: [40, 60] },
@@ -123,7 +124,7 @@ export const TEMPLATES: Record<Family, Template> = {
     ],
   },
   lead: {
-    algorithms: [1, 2], shape: 'gate', space: 'echo', mono: 'mono', portamento: 30, vibrato: [85, 70, 8],
+    algorithms: [1, 2], shape: 'gate', space: 'echo', mono: 'mono', portamento: 30, vibrato: [86, 70, 13],
     ops: [
       { ratio: 1, level: 125, feedback: [50, 80] },
       { ratio: [1, 2], level: [70, 90] },

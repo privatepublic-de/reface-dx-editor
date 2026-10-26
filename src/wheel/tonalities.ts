@@ -45,7 +45,8 @@ export interface Skeleton {
   shape: Envelope
   /** operators another tonality may take over: a carrier and its modulator, or a carrier alone */
   branches?: readonly (readonly [number] | readonly [number, number])[]
-  /** delayed vibrato on every operator: LFO speed, delay, PMD */
+  /** delayed vibrato on every operator: LFO speed, delay, PMD (measured, docs/SOUND.md: speed 84 ≈ 5 Hz, delay 80 ≈
+   *  0.6 s, PMD 12 ≈ ±0.2 semitones; PMD is quadratic, so below ~10 a vibrato isn't heard) */
   vibrato?: readonly [speed: number, delay: number, depth: number]
   /** a short pitch fall (above) or scoop (below) into the note */
   pitchBlip?: 'above' | 'below'
@@ -100,7 +101,7 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
   reed: {
     noun: 'Reed', adjective: 'Reedy',
     skeleton: {
-      algorithms: [8], shape: 'bowed', branches: [[2, 3]], vibrato: [70, 80, 7],
+      algorithms: [8], shape: 'bowed', branches: [[2, 3]], vibrato: [84, 80, 13],
       ops: [
         { ratio: 1, level: 120, feedback: [45, 70], square: true },
         { ratio: 2, level: [60, 70], velocity: [30, 50] },
@@ -129,7 +130,7 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
   string: {
     noun: 'Strings', adjective: 'Bowed',
     skeleton: {
-      algorithms: [8], shape: 'bowed', branches: [[2, 3]], vibrato: [75, 60, 6], length: 0.3,
+      algorithms: [8], shape: 'bowed', branches: [[2, 3]], vibrato: [82, 60, 12], length: 0.3,
       ops: [
         { ratio: 1, level: 115, feedback: [75, 95], detune: [-10, -6] },
         { ratio: [1, 2], level: [40, 52] },
@@ -144,7 +145,7 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
   breath: {
     noun: 'Flute', adjective: 'Airy',
     skeleton: {
-      algorithms: [5], shape: 'bowed', vibrato: [70, 80, 7],
+      algorithms: [5], shape: 'bowed', vibrato: [84, 80, 12],
       ops: [
         { ratio: 1, level: 120, feedback: [15, 35] },
         { ratio: [1, 2], level: [64, 76], velocity: [40, 60] },
@@ -250,7 +251,7 @@ export const TONALITY_DEFS: Record<Tonality, TonalityDef> = {
   organ: {
     noun: 'Organ', adjective: 'Organ',
     skeleton: {
-      algorithms: [12], shape: 'gate', vibrato: [95, 0, 5], branches: [[3], [2]],
+      algorithms: [12], shape: 'gate', vibrato: [95, 0, 10], branches: [[3], [2]],
       ops: [
         { ratio: [0.5, 1], level: [105, 115] },
         { ratio: [1, 2], level: [115, 125] },

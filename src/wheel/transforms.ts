@@ -133,7 +133,7 @@ export const TRANSFORMS: Record<Tonality, (v: Voice, a: number, rng: Rng) => voi
       }
       faster(v, op, -10 * a, [0])
     })
-    vibratoAtLeast(v, 75, 60, Math.round(6 * a))
+    vibratoAtLeast(v, 82, 60, Math.round(12 * a))
   },
   breath: (v, a) => addNoise(v, a, 76, 100),
   noise: (v, a) => addNoise(v, a, 88, 116),
